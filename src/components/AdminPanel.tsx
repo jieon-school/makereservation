@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Clock, Mail } from 'lucide-react';
-import { StorageService, DEFAULT_TIME_SLOTS, isNightSlot } from '../services/storage';
+import { ShieldCheck, Lock, Clock, Mail, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { StorageService, DEFAULT_TIME_SLOTS, isNightSlot, getTodayString } from '../services/storage';
 
 interface AdminPanelProps {
   selectedDate: string;
@@ -13,6 +13,7 @@ interface AdminPanelProps {
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   selectedDate,
+  onDateChange,
   isAdminLoggedIn,
   setIsAdminLoggedIn,
   onOpenEmailSettings,
@@ -27,11 +28,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [filterTopic, setFilterTopic] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  // Reservations list
+  // Reservations list & slots
   const reservations = StorageService.getReservations();
   const daySlots = StorageService.getSlotsForDate(selectedDate);
   const daySchedules = StorageService.getDaySchedules();
   const isClosedDay = !!daySchedules[selectedDate]?.isClosedDay;
+
+  // 14일간 날짜 목록 생성 (관리자 빠른 날짜 선택용)
+  const dateList: { dateStr: string; dayName: string; dayNum: number; isWeekend: boolean }[] = [];
+  const today = new Date();
+  for (let i = 0; i < 21; i++) { // 3주 분량
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    dateList.push({
+      dateStr,
+      dayName: dayNames[d.getDay()],
+      dayNum: d.getDate(),
+      isWeekend: d.getDay() === 0 || d.getDay() === 6
+    });
+  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +62,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     } else {
       setPinError('관리자 비밀번호가 올바르지 않습니다.');
     }
+  };
+
+  // 이전 / 다음 날짜 이동
+  const handlePrevDay = () => {
+    const cur = new Date(selectedDate);
+    cur.setDate(cur.getDate() - 1);
+    onDateChange(cur.toISOString().split('T')[0]);
+  };
+
+  const handleNextDay = () => {
+    const cur = new Date(selectedDate);
+    cur.setDate(cur.getDate() + 1);
+    onDateChange(cur.toISOString().split('T')[0]);
   };
 
   // 슬롯 개별 토글
@@ -55,7 +88,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     onDataChanged();
   };
 
-  // 일괄 토글
+  // 일괄 토글 (현재 선택 날짜)
   const handleBulkSet = (type: 'all_available' | 'all_blocked' | 'day_only' | 'night_only') => {
     DEFAULT_TIME_SLOTS.forEach(time => {
       let targetStatus: 'available' | 'blocked' = 'available';
@@ -66,6 +99,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       StorageService.updateSlotForDate(selectedDate, time, targetStatus);
     });
     onDataChanged();
+  };
+
+  // 주 단위 일괄 설정 (이번 주 월~금 또는 향후 7일 전체 적용)
+  const handleWeeklyBatchOpen = (mode: 'day_only' | 'all_open' | 'close_all') => {
+    const confirmMsg = mode === 'day_only'
+      ? '향후 7일간 모든 날짜의 [주간 상담 슬롯]을 오픈하시겠습니까?'
+      : mode === 'all_open'
+      ? '향후 7일간의 모든 날짜 [주간+야간 슬롯 전체]를 오픈하시겠습니까?'
+      : '향후 7일간의 모든 날짜 예약을 [전체 마감]하시겠습니까?';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    const baseToday = new Date();
+    for (let i = 0; i < 7; i++) {
+      const targetDateObj = new Date(baseToday);
+      targetDateObj.setDate(baseToday.getDate() + i);
+      const dateStr = targetDateObj.toISOString().split('T')[0];
+
+      if (mode === 'close_all') {
+        StorageService.toggleClosedDay(dateStr, true);
+      } else {
+        StorageService.toggleClosedDay(dateStr, false);
+        DEFAULT_TIME_SLOTS.forEach(time => {
+          let status: 'available' | 'blocked' = 'available';
+          if (mode === 'day_only') {
+            status = isNightSlot(time) ? 'blocked' : 'available';
+          }
+          StorageService.updateSlotForDate(dateStr, time, status);
+        });
+      }
+    }
+    onDataChanged();
+    alert('주 단위 일정 설정이 일괄 적용되었습니다.');
   };
 
   // 특정 날짜 전체 휴무 토글
@@ -228,13 +294,165 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab 1: Schedule Manager */}
       {activeTab === 'schedule' && (
         <div className="glass-card" style={{ padding: '1.75rem' }}>
+          {/* Admin Date Selector Bar */}
+          <div style={{
+            background: '#F8FAFC',
+            padding: '1.25rem',
+            borderRadius: '16px',
+            border: '1px solid #E2E8F0',
+            marginBottom: '1.5rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CalendarIcon size={20} color="#6366F1" />
+                <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0F172A' }}>
+                  설정할 날짜 선택: <span style={{ color: '#4F46E5' }}>{selectedDate}</span>
+                </span>
+                {selectedDate === getTodayString() && (
+                  <span style={{ background: '#EEF2FF', color: '#4F46E5', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '99px' }}>
+                    오늘
+                  </span>
+                )}
+              </div>
+
+              {/* Direct Date Picker & Arrows */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  onClick={handlePrevDay}
+                  title="이전 날짜"
+                  style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => e.target.value && onDateChange(e.target.value)}
+                  style={{
+                    padding: '0.35rem 0.6rem',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E1',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                />
+                <button
+                  onClick={handleNextDay}
+                  title="다음 날짜"
+                  style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Date Horizontal Carousel (3주 분량) */}
+            <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.4rem' }}>
+              {dateList.map((item) => {
+                const isSelected = item.dateStr === selectedDate;
+                return (
+                  <button
+                    key={item.dateStr}
+                    onClick={() => onDateChange(item.dateStr)}
+                    style={{
+                      flex: '0 0 auto',
+                      minWidth: '58px',
+                      padding: '0.65rem 0.4rem',
+                      borderRadius: '12px',
+                      border: isSelected ? '2px solid #6366F1' : '1px solid #E2E8F0',
+                      background: isSelected ? '#6366F1' : item.isWeekend ? '#F1F5F9' : '#FFFFFF',
+                      color: isSelected ? '#FFFFFF' : item.isWeekend ? '#EF4444' : '#0F172A',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, opacity: isSelected ? 0.9 : 0.7 }}>
+                      {item.dayName}
+                    </span>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 800, margin: '2px 0' }}>
+                      {item.dayNum}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Weekly Batch Actions */}
+          <div style={{
+            background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)',
+            padding: '1rem 1.25rem',
+            borderRadius: '14px',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Sparkles size={18} color="#4F46E5" />
+              <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#312E81' }}>
+                주(Week) 단위 일괄 운영 설정
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => handleWeeklyBatchOpen('day_only')}
+                className="btn-secondary"
+                style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem', background: '#FFF', color: '#4338CA', border: '1px solid #C7D2FE' }}
+              >
+                ⚡ 이번 주 전체 [주간만 오픈]
+              </button>
+              <button
+                onClick={() => handleWeeklyBatchOpen('all_open')}
+                className="btn-secondary"
+                style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem', background: '#FFF', color: '#4338CA', border: '1px solid #C7D2FE' }}
+              >
+                ✨ 이번 주 전체 [주+야간 오픈]
+              </button>
+              <button
+                onClick={() => handleWeeklyBatchOpen('close_all')}
+                className="btn-secondary"
+                style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem', background: '#FFF', color: '#DC2626', border: '1px solid #FCA5A5' }}
+              >
+                🚫 이번 주 전체 [마감]
+              </button>
+            </div>
+          </div>
+
+          {/* Selected Date Header Actions */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A' }}>
-                {selectedDate} 시간 슬롯 관리
+                [{selectedDate}] 시간 슬롯 관리
               </h3>
               <p style={{ fontSize: '0.825rem', color: '#64748B' }}>
-                클릭하여 특정 시간대의 학생 예약 가능 여부를 토글합니다.
+                버튼을 클릭하면 해당 시간대의 학생 예약 가능 여부가 즉시 토글됩니다.
               </p>
             </div>
 
@@ -244,28 +462,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="btn-secondary"
                 style={{ fontSize: '0.8rem', padding: '0.4rem 0.7rem' }}
               >
-                전체 열기
+                선택일 전체 열기
               </button>
               <button
                 onClick={() => handleBulkSet('day_only')}
                 className="btn-secondary"
                 style={{ fontSize: '0.8rem', padding: '0.4rem 0.7rem' }}
               >
-                주간만 열기
+                선택일 주간만 열기
               </button>
               <button
                 onClick={() => handleBulkSet('night_only')}
                 className="btn-secondary"
                 style={{ fontSize: '0.8rem', padding: '0.4rem 0.7rem' }}
               >
-                야간만 열기
+                선택일 야간만 열기
               </button>
               <button
                 onClick={handleToggleClosedDay}
                 className={isClosedDay ? "btn-primary" : "btn-danger"}
                 style={{ fontSize: '0.8rem', padding: '0.4rem 0.7rem' }}
               >
-                {isClosedDay ? '해당 날짜 마감 해제' : '해당 날짜 전체 휴무 마감'}
+                {isClosedDay ? '선택일 마감 해제' : '선택일 전체 휴무 마감'}
               </button>
             </div>
           </div>
