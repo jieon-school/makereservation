@@ -604,6 +604,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {res.date} <span style={{ color: '#0D9488' }}>{res.timeSlot}</span>
                       </td>
                       <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0F172A' }}>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: '6px',
+                          background: res.applicantType === '보호자' ? '#FEF3C7' : res.applicantType === '기타' ? '#F3E8FF' : '#E0E7FF',
+                          color: res.applicantType === '보호자' ? '#92400E' : res.applicantType === '기타' ? '#6B21A8' : '#3730A3',
+                          marginRight: '6px'
+                        }}>
+                          {res.applicantType || '학생'}
+                        </span>
                         {res.studentName}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>

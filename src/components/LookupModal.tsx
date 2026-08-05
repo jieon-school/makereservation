@@ -31,7 +31,7 @@ export const LookupModal: React.FC<LookupModalProps> = ({
     setErrorMsg('');
 
     if (!studentName.trim()) {
-      setErrorMsg('학생 이름을 입력해주세요.');
+      setErrorMsg('신청자 이름을 입력해주세요.');
       return;
     }
     if (!password.trim()) {
@@ -52,7 +52,7 @@ export const LookupModal: React.FC<LookupModalProps> = ({
 
   const handleCancelClick = () => {
     if (!foundReservation) return;
-    if (window.confirm(`${foundReservation.studentName} 학생의 [${foundReservation.date} ${foundReservation.timeSlot}] 상담 예약을 취소하시겠습니까?`)) {
+    if (window.confirm(`${foundReservation.studentName} 님의 [${foundReservation.date} ${foundReservation.timeSlot}] 상담 예약을 취소하시겠습니까?`)) {
       const success = StorageService.cancelReservation(foundReservation.id);
       if (success) {
         onReservationCancelled(foundReservation);
@@ -125,7 +125,7 @@ export const LookupModal: React.FC<LookupModalProps> = ({
             예약 조회 및 수정 / 취소
           </h2>
           <p style={{ fontSize: '0.875rem', color: '#64748B', marginTop: '0.2rem' }}>
-            예약 시 입력한 학생 이름과 비밀번호를 입력하여 내역을 확인합니다.
+            예약 시 입력한 신청자 이름과 비밀번호를 입력하여 내역을 확인합니다.
           </p>
         </div>
 
@@ -153,12 +153,12 @@ export const LookupModal: React.FC<LookupModalProps> = ({
             <div className="form-group">
               <label className="form-label">
                 <User size={14} style={{ display: 'inline', marginRight: '4px' }} />
-                학생 이름
+                신청자 이름
               </label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="예: 김민준"
+                placeholder="예: 김민준 또는 홍길동"
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
                 required
@@ -197,16 +197,21 @@ export const LookupModal: React.FC<LookupModalProps> = ({
               boxShadow: '0 4px 14px rgba(15, 23, 42, 0.2)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <span style={{ background: '#0D9488', color: '#FFF', fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: '99px' }}>
-                  예약 확정됨
-                </span>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <span style={{ background: '#0D9488', color: '#FFF', fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: '99px' }}>
+                    예약 확정됨
+                  </span>
+                  <span style={{ background: '#3B82F6', color: '#FFF', fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: '99px' }}>
+                    {foundReservation.applicantType || '학생'}
+                  </span>
+                </div>
                 <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>
                   예약 ID: {foundReservation.id}
                 </span>
               </div>
 
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>
-                {foundReservation.studentName} ({foundReservation.studentGradeClass})
+                {foundReservation.studentName} <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#CBD5E1' }}>({foundReservation.studentGradeClass})</span>
               </h3>
               
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', color: '#E2E8F0', fontSize: '0.95rem' }}>

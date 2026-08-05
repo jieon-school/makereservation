@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, CheckCircle2, User, BookOpen, AlertCircle, KeyRound } from 'lucide-react';
-import type { CounselingTopic } from '../types/reservation';
+import { X, Calendar, Clock, CheckCircle2, User, BookOpen, AlertCircle, KeyRound, Users } from 'lucide-react';
+import type { CounselingTopic, ApplicantType } from '../types/reservation';
 
 interface BookingModalProps {
   date: string;
@@ -8,6 +8,7 @@ interface BookingModalProps {
   onClose: () => void;
   onSubmit: (data: {
     studentName: string;
+    applicantType: ApplicantType;
     studentGradeClass: string;
     topic: CounselingTopic;
     notes: string;
@@ -22,12 +23,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onSubmit
 }) => {
   const [studentName, setStudentName] = useState('');
+  const [applicantType, setApplicantType] = useState<ApplicantType>('학생');
   const [studentGradeClass, setStudentGradeClass] = useState('');
   const [topic, setTopic] = useState<CounselingTopic>('수시 상담');
   const [notes, setNotes] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  const applicantOptions: ApplicantType[] = ['학생', '보호자', '기타'];
 
   const topics: { key: CounselingTopic; label: string; desc: string }[] = [
     { key: '수시 상담', label: '수시 상담', desc: '학생부, 교과/종합 전형 라인 및 자소서 상담' },
@@ -41,7 +45,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     setErrorMsg('');
 
     if (!studentName.trim()) {
-      setErrorMsg('학생 이름을 입력해주세요.');
+      setErrorMsg('신청자 이름을 입력해주세요.');
       return;
     }
     if (!studentGradeClass.trim()) {
@@ -63,6 +67,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     onSubmit({
       studentName: studentName.trim(),
+      applicantType,
       studentGradeClass: studentGradeClass.trim(),
       topic,
       notes: notes.trim(),
@@ -119,7 +124,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             상담 예약 신청
           </h2>
           <p style={{ fontSize: '0.875rem', color: '#64748B', marginTop: '0.2rem' }}>
-            상담 일시를 확인하고 학생 정보 및 비밀번호를 입력해주세요.
+            상담 일시를 확인하고 신청자 정보 및 비밀번호를 입력해주세요.
           </p>
         </div>
 
@@ -164,17 +169,50 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* 1. Student Basic Info */}
+          {/* 1. Applicant Type Selection (학생 / 보호자 / 기타) */}
+          <div className="form-group">
+            <label className="form-label">
+              <Users size={14} style={{ display: 'inline', marginRight: '4px' }} />
+              신청자 구분 선택 *
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+              {applicantOptions.map((type) => {
+                const isSelected = applicantType === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setApplicantType(type)}
+                    style={{
+                      padding: '0.65rem 0.5rem',
+                      borderRadius: '12px',
+                      border: isSelected ? '2px solid #0D9488' : '1.5px solid #E2E8F0',
+                      background: isSelected ? '#CCFBF1' : '#FFFFFF',
+                      color: isSelected ? '#0F766E' : '#475569',
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {type === '학생' ? '🎓 학생' : type === '보호자' ? '👨‍👩‍👧 보호자(학부모)' : '👥 기타'}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Applicant Name & Grade/Class */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">
                 <User size={14} style={{ display: 'inline', marginRight: '4px' }} />
-                학생 이름 *
+                {applicantType === '보호자' ? '보호자(학부모) 이름 *' : '신청자 이름 *'}
               </label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="예: 김민준"
+                placeholder={applicantType === '보호자' ? '예: 홍길동 (학부모)' : '예: 김민준'}
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
                 required
@@ -182,7 +220,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
 
             <div className="form-group">
-              <label className="form-label">학년 / 반 / 번호 *</label>
+              <label className="form-label">학생 학년 / 반 / 번호 *</label>
               <input
                 type="text"
                 className="form-input"
@@ -194,7 +232,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
           </div>
 
-          {/* 2. Counseling Topic Selection */}
+          {/* 3. Counseling Topic Selection */}
           <div className="form-group">
             <label className="form-label">
               <BookOpen size={14} style={{ display: 'inline', marginRight: '4px' }} />
@@ -232,7 +270,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
           </div>
 
-          {/* 3. Detailed Notes */}
+          {/* 4. Detailed Notes */}
           <div className="form-group">
             <label className="form-label">미리 전하고 싶은 내용 (선택)</label>
             <textarea
@@ -244,7 +282,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             />
           </div>
 
-          {/* 4. Password & Password Confirmation */}
+          {/* 5. Password & Password Confirmation */}
           <div style={{
             background: '#F8FAFC',
             border: '1px solid #E2E8F0',

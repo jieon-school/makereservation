@@ -1,10 +1,13 @@
 export type CounselingTopic = '정시 상담' | '수시 상담' | '학교 생활' | '기타';
 
+export type ApplicantType = '학생' | '보호자' | '기타';
+
 export type ReservationStatus = 'confirmed' | 'pending' | 'completed' | 'cancelled';
 
 export interface Reservation {
   id: string;
-  studentName: string;
+  studentName: string;       // 신청자 이름
+  applicantType: ApplicantType; // 학생 | 보호자 | 기타
   studentGradeClass: string; // e.g. "3학년 2반 15번"
   topic: CounselingTopic;
   notes: string;             // 추가 상담 내용

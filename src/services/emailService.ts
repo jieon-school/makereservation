@@ -17,6 +17,7 @@ export async function sendReservationNotificationEmail(
   const emailData = {
     to_email: config.adminEmail,
     student_name: reservation.studentName,
+    applicant_type: reservation.applicantType || '학생',
     student_grade_class: reservation.studentGradeClass,
     topic: reservation.topic,
     reservation_date: reservation.date,

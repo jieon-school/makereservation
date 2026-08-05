@@ -33,8 +33,8 @@ export const EmailSettingsModal: React.FC<EmailSettingsModalProps> = ({
     const testReservation = {
       id: 'test-123',
       studentName: '홍길동 (테스트)',
+      applicantType: '학생' as const,
       studentGradeClass: '3학년 1반 1번',
-      studentContact: '010-0000-0000',
       topic: '수시 상담' as const,
       notes: '지메일 알림 발송 테스트입니다.',
       passwordHash: '0000',

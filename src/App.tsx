@@ -10,7 +10,7 @@ import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
 import { StorageService, getTodayString } from './services/storage';
 import { sendReservationNotificationEmail } from './services/emailService';
-import type { CounselingTopic } from './types/reservation';
+import type { CounselingTopic, ApplicantType } from './types/reservation';
 import { Clock, CheckCircle2, Sparkles } from 'lucide-react';
 
 export function App() {
@@ -43,9 +43,10 @@ export function App() {
     });
   };
 
-  // Student completes reservation
+  // Student/Parent completes reservation
   const handleBookingSubmit = async (data: {
     studentName: string;
+    applicantType: ApplicantType;
     studentGradeClass: string;
     topic: CounselingTopic;
     notes: string;
@@ -56,6 +57,7 @@ export function App() {
     // 1. Add reservation to storage
     const newReservation = StorageService.addReservation({
       studentName: data.studentName,
+      applicantType: data.applicantType,
       studentGradeClass: data.studentGradeClass,
       topic: data.topic,
       notes: data.notes,
@@ -75,7 +77,7 @@ export function App() {
     // 3. Show Toast
     showToast(
       'success',
-      `[${selectedDate} ${newReservation.timeSlot}] 상담 예약이 완료되었습니다! 비밀번호는 ${newReservation.passwordHash} 입니다. (${emailRes.message})`
+      `[${selectedDate} ${newReservation.timeSlot}] (${data.applicantType}) 상담 예약이 완료되었습니다! 비밀번호는 ${newReservation.passwordHash} 입니다. (${emailRes.message})`
     );
   };
 
@@ -110,25 +112,25 @@ export function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
                   <Sparkles size={20} color="#0D9488" />
                   <span style={{ fontWeight: 800, color: '#0D9488', fontSize: '0.875rem' }}>
-                    1:1 맞춤형 진로 및 학업 상담
+                    1:1 맞춤형 학생 / 보호자 상담
                   </span>
                 </div>
                 <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
                   상담을 원하는 날짜와 시간을 선택해주세요
                 </h1>
                 <p style={{ fontSize: '0.95rem', color: '#64748B', marginTop: '0.3rem' }}>
-                  주간 수업 시간대부터 야간 야자 시간(밤 9시 30분)까지 편한 시간을 선택하여 신청할 수 있습니다.
+                  학생 및 보호자(학부모) 모두 신청 가능하며, 주간부터 야간(밤 9시 30분)까지 편한 시간을 선택하실 수 있습니다.
                 </p>
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <div style={{ background: '#FFFFFF', padding: '0.75rem 1.25rem', borderRadius: '14px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>상담 주제</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>수시 / 정시 / 생활 / 기타</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>신청 대상</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>학생 / 보호자 / 기타</div>
                 </div>
                 <div style={{ background: '#FFFFFF', padding: '0.75rem 1.25rem', borderRadius: '14px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>비밀번호 보안</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0D9488' }}>본인 직접 수정/취소</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>상담 주제</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0D9488' }}>수시 / 정시 / 생활 / 기타</div>
                 </div>
               </div>
             </div>
@@ -196,11 +198,11 @@ export function App() {
           <LookupModal
             onClose={() => setActiveTab('booking')}
             onReservationCancelled={(res) => {
-              showToast('info', `${res.studentName} 학생의 [${res.date} ${res.timeSlot}] 상담 예약이 취소되었습니다.`);
+              showToast('info', `${res.studentName} 님의 [${res.date} ${res.timeSlot}] 상담 예약이 취소되었습니다.`);
               triggerRefresh();
             }}
             onReservationUpdated={(res) => {
-              showToast('success', `${res.studentName} 학생의 상담 예약 정보가 수정되었습니다.`);
+              showToast('success', `${res.studentName} 님의 상담 예약 정보가 수정되었습니다.`);
               triggerRefresh();
             }}
           />
@@ -249,7 +251,7 @@ export function App() {
         borderTop: '1px solid rgba(226, 232, 240, 0.8)',
         background: 'rgba(255, 255, 255, 0.5)'
       }}>
-        © 2026 학생 상담 예약 및 관리 시스템 • 교사 1:1 맞춤형 상담 지원
+        © 2026 학생 및 보호자 상담 예약 시스템 • 교사 1:1 맞춤형 상담 지원
       </footer>
     </div>
   );
