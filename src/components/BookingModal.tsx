@@ -195,7 +195,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       transition: 'all 0.15s ease'
                     }}
                   >
-                    {type === '학생' ? '🎓 학생' : type === '보호자' ? '👨‍👩‍👧 보호자(학부모)' : '👥 기타'}
+                    {type === '학생' ? '🎓 학생' : type === '보호자' ? '👨‍👩‍👧 보호자' : '👥 기타'}
                   </button>
                 );
               })}
@@ -207,12 +207,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div className="form-group">
               <label className="form-label">
                 <User size={14} style={{ display: 'inline', marginRight: '4px' }} />
-                {applicantType === '보호자' ? '보호자(학부모) 이름 *' : '신청자 이름 *'}
+                {applicantType === '보호자' ? '보호자 이름 *' : '신청자 이름 *'}
               </label>
               <input
                 type="text"
                 className="form-input"
-                placeholder={applicantType === '보호자' ? '예: 홍길동 (학부모)' : '예: 김민준'}
+                placeholder={applicantType === '보호자' ? '예: 홍길동 (보호자)' : '예: 김민준'}
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
                 required
