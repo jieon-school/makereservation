@@ -1,24 +1,30 @@
 import type { Reservation, DaySchedule, TimeSlotConfig, EmailConfig, EmailLog } from '../types/reservation';
 
 const STORAGE_KEYS = {
-  RESERVATIONS: 'counseling_reservations_v2',
-  DAY_SCHEDULES: 'counseling_day_schedules_v2',
+  RESERVATIONS: 'counseling_reservations_v3',
+  DAY_SCHEDULES: 'counseling_day_schedules_v3',
   EMAIL_CONFIG: 'counseling_email_config',
   EMAIL_LOGS: 'counseling_email_logs',
-  ADMIN_PIN: 'counseling_admin_pin_v2',
+  ADMIN_PIN: 'counseling_admin_pin_v3',
 };
 
-// 기본 표준 시간 슬롯 목록 (09:00 ~ 21:30)
+// 8시 40분부터 50분 상담 + 10분 쉬는시간 (12:30까지), 점심시간 후 13:40~17:30, 야자 1/2/3교시
 export const DEFAULT_TIME_SLOTS: string[] = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-  '16:00', '16:30', '17:00', '18:30', '19:00', '19:30',
-  '20:00', '20:30', '21:00', '21:30'
+  '08:40 ~ 09:30 (1교시)',
+  '09:40 ~ 10:30 (2교시)',
+  '10:40 ~ 11:30 (3교시)',
+  '11:40 ~ 12:30 (4교시)',
+  '13:40 ~ 14:30 (5교시)',
+  '14:40 ~ 15:30 (6교시)',
+  '15:40 ~ 16:30 (7교시)',
+  '16:40 ~ 17:30 (8교시)',
+  '18:30 ~ 19:20 (야자 1교시)',
+  '19:30 ~ 20:20 (야자 2교시)',
+  '20:30 ~ 21:20 (야자 3교시)'
 ];
 
 export function isNightSlot(time: string): boolean {
-  const hour = parseInt(time.split(':')[0], 10);
-  return hour >= 18;
+  return time.includes('야자') || time.startsWith('18:') || time.startsWith('19:') || time.startsWith('20:');
 }
 
 // 오늘 날짜 YYYY-MM-DD 형식 반환
@@ -60,17 +66,37 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.RESERVATIONS, JSON.stringify(reservations));
   },
 
-  addReservation(reservation: Omit<Reservation, 'id' | 'createdAt' | 'status'>): Reservation {
+  addReservation(data: Omit<Reservation, 'id' | 'createdAt' | 'status'>): Reservation {
     const reservations = this.getReservations();
-    const newRes: Reservation = {
-      ...reservation,
-      id: `res-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      createdAt: new Date().toISOString(),
+    const newReservation: Reservation = {
+      ...data,
+      id: `res-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       status: 'confirmed',
+      createdAt: new Date().toISOString(),
     };
-    reservations.push(newRes);
+
+    reservations.push(newReservation);
     this.saveReservations(reservations);
-    return newRes;
+
+    // 해당 날짜/시간 슬롯 상태를 'booked'로 업데이트
+    this.updateSlotForDate(data.date, data.timeSlot, 'booked');
+
+    return newReservation;
+  },
+
+  cancelReservation(id: string): boolean {
+    const reservations = this.getReservations();
+    const target = reservations.find(r => r.id === id);
+    if (!target) return false;
+
+    // 예약 상태를 cancelled로 변경
+    target.status = 'cancelled';
+    this.saveReservations(reservations);
+
+    // 해당 날짜/시간 슬롯을 다시 available로 해제
+    this.updateSlotForDate(target.date, target.timeSlot, 'available');
+
+    return true;
   },
 
   updateReservation(id: string, updates: Partial<Reservation>): Reservation | null {
@@ -83,27 +109,16 @@ export const StorageService = {
     return reservations[index];
   },
 
-  cancelReservation(id: string): boolean {
+  findReservationByPassword(studentName: string, passwordHash: string): Reservation | undefined {
     const reservations = this.getReservations();
-    const index = reservations.findIndex(r => r.id === id);
-    if (index === -1) return false;
-
-    reservations[index].status = 'cancelled';
-    this.saveReservations(reservations);
-    return true;
+    return reservations.find(
+      r => r.studentName.trim() === studentName.trim() &&
+           r.passwordHash.trim() === passwordHash.trim() &&
+           r.status !== 'cancelled'
+    );
   },
 
-  // 비밀번호 검증으로 본인 예약 찾기
-  findReservationByPassword(studentName: string, passwordInput: string): Reservation | null {
-    const reservations = this.getReservations();
-    return reservations.find(r => 
-      r.studentName.trim() === studentName.trim() && 
-      r.passwordHash === passwordInput.trim() &&
-      r.status !== 'cancelled'
-    ) || null;
-  },
-
-  // --- Day Schedules (관리자 시간 설정) ---
+  // --- Day Schedules & Slots ---
   getDaySchedules(): Record<string, DaySchedule> {
     const raw = localStorage.getItem(STORAGE_KEYS.DAY_SCHEDULES);
     if (!raw) return {};
@@ -118,69 +133,58 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.DAY_SCHEDULES, JSON.stringify(schedules));
   },
 
-  // 특정 날짜의 타임슬롯 상태 조회 (예약 정보와 병합)
-  getSlotsForDate(date: string): TimeSlotConfig[] {
+  getSlotsForDate(dateStr: string): TimeSlotConfig[] {
     const daySchedules = this.getDaySchedules();
-    const dayConfig = daySchedules[date];
-    const reservations = this.getReservations().filter(r => r.date === date && r.status !== 'cancelled');
-    const bookedTimes = new Set(reservations.map(r => r.timeSlot));
+    const schedule = daySchedules[dateStr];
 
-    // 기본 슬롯 목록 기반 생성
-    const baseTimes = dayConfig?.customSlots?.length 
-      ? dayConfig.customSlots 
-      : DEFAULT_TIME_SLOTS.map(t => ({ time: t, status: 'available' as const, isNight: isNightSlot(t) }));
+    // 기존 설정이 있는 경우
+    if (schedule && schedule.customSlots && schedule.customSlots.length > 0) {
+      return schedule.customSlots;
+    }
 
-    return baseTimes.map(slot => {
-      let status: 'available' | 'booked' | 'blocked' = slot.status;
-      if (dayConfig?.isClosedDay) {
-        status = 'blocked';
-      } else if (bookedTimes.has(slot.time)) {
-        status = 'booked';
-      }
-      return {
-        ...slot,
+    // 기본 시간 슬롯 설정 생성
+    return DEFAULT_TIME_SLOTS.map(time => ({
+      time,
+      status: 'available',
+      isNight: isNightSlot(time)
+    }));
+  },
+
+  updateSlotForDate(dateStr: string, time: string, status: 'available' | 'booked' | 'blocked'): void {
+    const daySchedules = this.getDaySchedules();
+    let currentSlots = this.getSlotsForDate(dateStr);
+
+    const slotIndex = currentSlots.findIndex(s => s.time === time);
+    if (slotIndex >= 0) {
+      currentSlots[slotIndex].status = status;
+    } else {
+      currentSlots.push({
+        time,
         status,
-        isNight: isNightSlot(slot.time)
-      };
-    });
-  },
-
-  // 특정 날짜의 시간 슬롯 설정 변경
-  updateSlotForDate(date: string, time: string, status: 'available' | 'blocked'): void {
-    const schedules = this.getDaySchedules();
-    if (!schedules[date]) {
-      schedules[date] = {
-        date,
-        isClosedDay: false,
-        customSlots: DEFAULT_TIME_SLOTS.map(t => ({ time: t, status: 'available', isNight: isNightSlot(t) }))
-      };
+        isNight: isNightSlot(time)
+      });
     }
 
-    const customSlots = schedules[date].customSlots || DEFAULT_TIME_SLOTS.map(t => ({ time: t, status: 'available', isNight: isNightSlot(t) }));
-    const slotIdx = customSlots.findIndex(s => s.time === time);
-    if (slotIdx !== -1) {
-      customSlots[slotIdx].status = status;
-    } else {
-      customSlots.push({ time, status, isNight: isNightSlot(time) });
-      customSlots.sort((a, b) => a.time.localeCompare(b.time));
-    }
+    daySchedules[dateStr] = {
+      ...daySchedules[dateStr],
+      date: dateStr,
+      customSlots: currentSlots
+    };
 
-    schedules[date].customSlots = customSlots;
-    this.saveDaySchedules(schedules);
+    this.saveDaySchedules(daySchedules);
   },
 
-  // 특정 날짜 전체 마감/해제
-  toggleClosedDay(date: string, isClosed: boolean): void {
-    const schedules = this.getDaySchedules();
-    if (!schedules[date]) {
-      schedules[date] = { date, isClosedDay: isClosed };
-    } else {
-      schedules[date].isClosedDay = isClosed;
-    }
-    this.saveDaySchedules(schedules);
+  toggleClosedDay(dateStr: string, isClosed: boolean): void {
+    const daySchedules = this.getDaySchedules();
+    daySchedules[dateStr] = {
+      ...daySchedules[dateStr],
+      date: dateStr,
+      isClosedDay: isClosed
+    };
+    this.saveDaySchedules(daySchedules);
   },
 
-  // --- Email Config & Logs ---
+  // --- Email Config ---
   getEmailConfig(): EmailConfig {
     const raw = localStorage.getItem(STORAGE_KEYS.EMAIL_CONFIG);
     if (!raw) return DEFAULT_EMAIL_CONFIG;
@@ -195,6 +199,7 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.EMAIL_CONFIG, JSON.stringify(config));
   },
 
+  // --- Email Logs ---
   getEmailLogs(): EmailLog[] {
     const raw = localStorage.getItem(STORAGE_KEYS.EMAIL_LOGS);
     if (!raw) return [];
@@ -210,10 +215,10 @@ export const StorageService = {
     const newLog: EmailLog = {
       ...log,
       id: `log-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString('ko-KR')
+      timestamp: new Date().toISOString()
     };
-    logs.unshift(newLog);
-    localStorage.setItem(STORAGE_KEYS.EMAIL_LOGS, JSON.stringify(logs.slice(0, 50)));
+    logs.unshift(newLog); // 최신순
+    localStorage.setItem(STORAGE_KEYS.EMAIL_LOGS, JSON.stringify(logs.slice(0, 50))); // 최근 50개 유지
   },
 
   // --- Admin PIN ---
