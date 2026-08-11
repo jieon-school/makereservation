@@ -175,21 +175,29 @@ export const StorageService = {
       this.saveReservations(mergedRes);
     }
 
-    // 2. 일정 설정(마감일, 커스텀 슬롯) 스마트 병합
+    // 2. 일정 설정(마감일, 커스텀 슬롯) 타임스탬프 기반 스마트 병합
     if (cloudData.daySchedules && typeof cloudData.daySchedules === 'object') {
       const localSchedules = this.getDaySchedules();
       const cloudSchedules = cloudData.daySchedules;
       const cloudKeys = Object.keys(cloudSchedules);
 
-      // 클라우드에 일정이 존재할 때만 병합 진행 (빈 클라우드 응답으로 로컬 마감 설정이 초기화되는 문제 방지)
+      // 클라우드에 일정이 존재할 때만 병합 진행
       if (cloudKeys.length > 0) {
         const mergedSchedules: Record<string, DaySchedule> = { ...localSchedules };
         for (const key of cloudKeys) {
-          if (cloudSchedules[key]) {
-            mergedSchedules[key] = {
-              ...mergedSchedules[key],
-              ...cloudSchedules[key]
-            };
+          const cloudItem = cloudSchedules[key];
+          const localItem = localSchedules[key];
+
+          if (cloudItem) {
+            // 로컬 수정 시각이 클라우드 수정 시각보다 최신이면 로컬 설정 우선 유지!
+            if (localItem && (localItem.updatedAt || 0) > (cloudItem.updatedAt || 0)) {
+              mergedSchedules[key] = localItem;
+            } else {
+              mergedSchedules[key] = {
+                ...mergedSchedules[key],
+                ...cloudItem
+              };
+            }
           }
         }
         this.saveDaySchedules(mergedSchedules);
@@ -217,22 +225,38 @@ export const StorageService = {
     const schedule = daySchedules[dateStr];
     const isSat = isSaturday(dateStr);
 
+    let baseSlots: TimeSlotConfig[] = [];
+
     // 기존 커스텀 설정이 있는 경우
     if (schedule && schedule.customSlots && schedule.customSlots.length > 0) {
-      // 토요일의 경우 야간 슬롯은 완전 제외
-      if (isSat) {
-        return schedule.customSlots.filter(s => !isNightSlot(s.time));
-      }
-      return schedule.customSlots;
+      baseSlots = schedule.customSlots;
+    } else {
+      // 기본 시간 슬롯 설정 생성
+      const defaultSlots = getDefaultSlotsForDate(dateStr);
+      baseSlots = defaultSlots.map(time => ({
+        time,
+        status: 'available',
+        isNight: isNightSlot(time)
+      }));
     }
 
-    // 기본 시간 슬롯 설정 생성 (토요일은 야간 제외)
-    const defaultSlots = getDefaultSlotsForDate(dateStr);
-    return defaultSlots.map(time => ({
-      time,
-      status: 'available',
-      isNight: isNightSlot(time)
-    }));
+    // 토요일의 경우 야간 슬롯은 완전 제외
+    if (isSat) {
+      baseSlots = baseSlots.filter(s => !isNightSlot(s.time));
+    }
+
+    // 해당 날짜에 확정된 실제 예약 목록을 슬롯에 강제 반영 (중복 예약 및 마감 오작동 방지)
+    const confirmedReservations = this.getReservations().filter(
+      r => r.date === dateStr && r.status === 'confirmed'
+    );
+    const bookedTimeSet = new Set(confirmedReservations.map(r => r.timeSlot));
+
+    return baseSlots.map(slot => {
+      if (bookedTimeSet.has(slot.time)) {
+        return { ...slot, status: 'booked' };
+      }
+      return slot;
+    });
   },
 
   updateSlotForDate(dateStr: string, time: string, status: 'available' | 'booked' | 'blocked'): void {
@@ -253,7 +277,8 @@ export const StorageService = {
     daySchedules[dateStr] = {
       ...daySchedules[dateStr],
       date: dateStr,
-      customSlots: currentSlots
+      customSlots: currentSlots,
+      updatedAt: Date.now()
     };
 
     this.saveDaySchedules(daySchedules);
@@ -272,13 +297,20 @@ export const StorageService = {
           status: s.status === 'booked' ? 'booked' : 'available'
         }));
       }
+    } else {
+      // 날짜 전체 마감 시 슬롯들도 'blocked' 처리
+      currentSlots = currentSlots.map(s => ({
+        ...s,
+        status: s.status === 'booked' ? 'booked' : 'blocked'
+      }));
     }
 
     daySchedules[dateStr] = {
       ...daySchedules[dateStr],
       date: dateStr,
       isClosedDay: isClosed,
-      customSlots: currentSlots
+      customSlots: currentSlots,
+      updatedAt: Date.now()
     };
     this.saveDaySchedules(daySchedules);
   },

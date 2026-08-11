@@ -31,6 +31,7 @@ export interface DaySchedule {
   date: string;              // YYYY-MM-DD
   isClosedDay?: boolean;     // 날짜 전체 마감 여부
   customSlots?: TimeSlotConfig[]; // 커스텀 설정된 슬롯 목록
+  updatedAt?: number;        // 수정 시각 타임스탬프 (클라우드 동기화 충돌 방지)
 }
 
 export interface EmailConfig {
