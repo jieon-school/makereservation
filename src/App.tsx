@@ -34,6 +34,7 @@ export function App() {
   const slots = StorageService.getSlotsForDate(selectedDate);
   const daySchedules = StorageService.getDaySchedules();
   const isClosedDay = !!daySchedules[selectedDate]?.isClosedDay;
+  const isGuardianEnabled = StorageService.isGuardianBookingEnabled();
 
   const showToast = (type: 'success' | 'error' | 'info', message: string) => {
     setToast({
@@ -112,21 +113,25 @@ export function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
                   <Sparkles size={20} color="#0D9488" />
                   <span style={{ fontWeight: 800, color: '#0D9488', fontSize: '0.875rem' }}>
-                    1:1 맞춤형 학생 / 보호자 상담
+                    {isGuardianEnabled ? '1:1 맞춤형 학생 / 보호자 상담' : '1:1 맞춤형 학생 상담 (보호자 예약 마감)'}
                   </span>
                 </div>
                 <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
                   상담을 원하는 날짜와 시간을 선택해주세요
                 </h1>
                 <p style={{ fontSize: '0.95rem', color: '#64748B', marginTop: '0.3rem' }}>
-                  학생 및 보호자(학부모) 모두 신청 가능하며, 주간부터 야간(밤 9시 30분)까지 편한 시간을 선택하실 수 있습니다.
+                  {isGuardianEnabled
+                    ? '학생 및 보호자 모두 신청 가능하며, 주간부터 야간(야자 3교시)까지 편한 시간을 선택하실 수 있습니다.'
+                    : '현재 학생(및 기타) 상담 예약만 접수 중이며, 주간부터 야간(야자 3교시)까지 편한 시간을 선택하실 수 있습니다.'}
                 </p>
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <div style={{ background: '#FFFFFF', padding: '0.75rem 1.25rem', borderRadius: '14px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
                   <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>신청 대상</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>학생 / 보호자 / 기타</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: isGuardianEnabled ? '#0F172A' : '#D97706' }}>
+                    {isGuardianEnabled ? '학생 / 보호자 / 기타' : '학생 / 기타 (보호자 마감)'}
+                  </div>
                 </div>
                 <div style={{ background: '#FFFFFF', padding: '0.75rem 1.25rem', borderRadius: '14px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
                   <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>상담 주제</div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, CheckCircle2, User, BookOpen, AlertCircle, KeyRound, Users } from 'lucide-react';
+import { X, Calendar, Clock, CheckCircle2, User, BookOpen, AlertCircle, KeyRound, Users, Ban } from 'lucide-react';
 import type { CounselingTopic, ApplicantType } from '../types/reservation';
+import { StorageService } from '../services/storage';
 
 interface BookingModalProps {
   date: string;
@@ -22,6 +23,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onClose,
   onSubmit
 }) => {
+  const isGuardianEnabled = StorageService.isGuardianBookingEnabled();
   const [studentName, setStudentName] = useState('');
   const [applicantType, setApplicantType] = useState<ApplicantType>('학생');
   const [studentGradeClass, setStudentGradeClass] = useState('');
@@ -44,6 +46,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     e.preventDefault();
     setErrorMsg('');
 
+    if (applicantType === '보호자' && !isGuardianEnabled) {
+      setErrorMsg('현재 보호자 예약은 접수 마감 상태입니다. 학생으로 신청해주세요.');
+      return;
+    }
     if (!studentName.trim()) {
       setErrorMsg('신청자 이름을 입력해주세요.');
       return;
@@ -178,28 +184,62 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
               {applicantOptions.map((type) => {
                 const isSelected = applicantType === type;
+                const isGuardianDisabled = type === '보호자' && !isGuardianEnabled;
+
                 return (
                   <button
                     key={type}
                     type="button"
-                    onClick={() => setApplicantType(type)}
+                    onClick={() => {
+                      if (isGuardianDisabled) {
+                        setErrorMsg('현재 선생님께서 보호자 상담 예약 접수를 마감하셨습니다. 학생 또는 기타로 신청해주세요.');
+                        return;
+                      }
+                      setErrorMsg('');
+                      setApplicantType(type);
+                    }}
                     style={{
                       padding: '0.65rem 0.5rem',
                       borderRadius: '12px',
-                      border: isSelected ? '2px solid #0D9488' : '1.5px solid #E2E8F0',
-                      background: isSelected ? '#CCFBF1' : '#FFFFFF',
-                      color: isSelected ? '#0F766E' : '#475569',
+                      border: isGuardianDisabled
+                        ? '1.5px dashed #CBD5E1'
+                        : isSelected ? '2px solid #0D9488' : '1.5px solid #E2E8F0',
+                      background: isGuardianDisabled
+                        ? '#F8FAFC'
+                        : isSelected ? '#CCFBF1' : '#FFFFFF',
+                      color: isGuardianDisabled
+                        ? '#94A3B8'
+                        : isSelected ? '#0F766E' : '#475569',
                       fontWeight: 700,
-                      fontSize: '0.9rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      fontSize: '0.85rem',
+                      cursor: isGuardianDisabled ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s ease',
+                      opacity: isGuardianDisabled ? 0.7 : 1
                     }}
                   >
-                    {type === '학생' ? '🎓 학생' : type === '보호자' ? '👨‍👩‍👧 보호자' : '👥 기타'}
+                    {type === '학생' ? '🎓 학생' : type === '보호자' ? (isGuardianDisabled ? '🔒 보호자 (마감)' : '👨‍👩‍👧 보호자') : '👥 기타'}
                   </button>
                 );
               })}
             </div>
+
+            {!isGuardianEnabled && (
+              <div style={{
+                fontSize: '0.78rem',
+                color: '#B45309',
+                background: '#FFFBEB',
+                border: '1px solid #FDE68A',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '8px',
+                marginTop: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem'
+              }}>
+                <Ban size={14} color="#B45309" />
+                <span>현재 <strong>보호자 상담 예약은 마감</strong>되어 있습니다. 학생으로 신청해주세요.</span>
+              </div>
+            )}
           </div>
 
           {/* 2. Applicant Name & Grade/Class */}

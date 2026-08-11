@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Clock, Mail, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ShieldCheck, Lock, Clock, Mail, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, UserCheck, UserX } from 'lucide-react';
 import { StorageService, DEFAULT_TIME_SLOTS, isNightSlot, getTodayString } from '../services/storage';
 
 interface AdminPanelProps {
@@ -22,6 +22,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
   const [activeTab, setActiveTab] = useState<'schedule' | 'reservations'>('schedule');
+  const [guardianEnabled, setGuardianEnabled] = useState<boolean>(StorageService.isGuardianBookingEnabled());
 
   // Filter state for reservations
   const [searchName, setSearchName] = useState('');
@@ -62,6 +63,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     } else {
       setPinError('관리자 비밀번호가 올바르지 않습니다.');
     }
+  };
+
+  // 보호자 예약 접수 허용/차단 토글
+  const handleToggleGuardianBooking = () => {
+    const next = !guardianEnabled;
+    StorageService.setGuardianBookingEnabled(next);
+    setGuardianEnabled(next);
+    onDataChanged();
   };
 
   // 이전 / 다음 날짜 이동
@@ -253,6 +262,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             로그아웃
           </button>
         </div>
+      </div>
+
+      {/* Guardian Booking Control Card */}
+      <div style={{
+        background: guardianEnabled ? '#ECFDF5' : '#FEF2F2',
+        border: guardianEnabled ? '1.5px solid #A7F3D0' : '1.5px solid #FECACA',
+        padding: '0.9rem 1.25rem',
+        borderRadius: '16px',
+        marginBottom: '1.25rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.75rem',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{
+            background: guardianEnabled ? '#D1FAE5' : '#FEE2E2',
+            padding: '0.5rem',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            {guardianEnabled ? <UserCheck size={20} color="#059669" /> : <UserX size={20} color="#DC2626" />}
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: guardianEnabled ? '#065F46' : '#991B1B' }}>
+              👨‍👩‍👧 보호자 상담 예약 접수 상태: {guardianEnabled ? '✅ [열림 / 접수 가능]' : '🔒 [닫힘 / 마감됨]'}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: guardianEnabled ? '#047857' : '#B91C1C', marginTop: '2px' }}>
+              {guardianEnabled 
+                ? '현재 학생과 보호자 모두 신청 창에서 상담 예약을 신청할 수 있습니다.'
+                : '보호자 예약 선택이 비활성화되어, 학생(또는 기타)만 상담을 신청할 수 있습니다.'}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={handleToggleGuardianBooking}
+          style={{
+            padding: '0.55rem 1.1rem',
+            borderRadius: '10px',
+            border: 'none',
+            fontWeight: 800,
+            fontSize: '0.85rem',
+            cursor: 'pointer',
+            background: guardianEnabled ? '#DC2626' : '#059669',
+            color: '#FFFFFF',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          {guardianEnabled ? '🚫 보호자 예약 닫기' : '✨ 보호자 예약 열기'}
+        </button>
       </div>
 
       {/* Admin Mode Sub-Tabs */}

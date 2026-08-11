@@ -228,5 +228,15 @@ export const StorageService = {
 
   saveAdminPin(pin: string): void {
     localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, pin);
+  },
+
+  // --- Guardian Booking Setting ---
+  isGuardianBookingEnabled(): boolean {
+    const raw = localStorage.getItem('counseling_allow_guardian_v1');
+    return raw !== null ? raw === 'true' : true; // 기본값: true (허용)
+  },
+
+  setGuardianBookingEnabled(enabled: boolean): void {
+    localStorage.setItem('counseling_allow_guardian_v1', String(enabled));
   }
 };
