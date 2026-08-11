@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Lock, Calendar, Clock, User, AlertCircle, Trash2, Edit3, X, CheckCircle } from 'lucide-react';
 import type { Reservation, CounselingTopic } from '../types/reservation';
 import { StorageService } from '../services/storage';
+import { GoogleSheetService } from '../services/googleSheetService';
 
 interface LookupModalProps {
   onClose: () => void;
@@ -50,18 +51,19 @@ export const LookupModal: React.FC<LookupModalProps> = ({
     }
   };
 
-  const handleCancelClick = () => {
+  const handleCancelClick = async () => {
     if (!foundReservation) return;
     if (window.confirm(`${foundReservation.studentName} 님의 [${foundReservation.date} ${foundReservation.timeSlot}] 상담 예약을 취소하시겠습니까?`)) {
       const success = StorageService.cancelReservation(foundReservation.id);
       if (success) {
+        GoogleSheetService.cancelReservation(foundReservation.id);
         onReservationCancelled(foundReservation);
         onClose();
       }
     }
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!foundReservation) return;
     const updated = StorageService.updateReservation(foundReservation.id, {
       topic: editTopic,
@@ -69,6 +71,10 @@ export const LookupModal: React.FC<LookupModalProps> = ({
     });
 
     if (updated) {
+      GoogleSheetService.updateReservation(foundReservation.id, {
+        topic: editTopic,
+        notes: editNotes
+      });
       setFoundReservation(updated);
       setIsEditing(false);
       onReservationUpdated(updated);

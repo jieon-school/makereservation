@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navbar } from './components/Navbar';
 import { DatePicker } from './components/DatePicker';
 import { TimeSlotGrid } from './components/TimeSlotGrid';
@@ -9,6 +9,7 @@ import { EmailSettingsModal } from './components/EmailSettingsModal';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
 import { StorageService, getTodayString } from './services/storage';
+import { GoogleSheetService } from './services/googleSheetService';
 import { sendReservationNotificationEmail } from './services/emailService';
 import type { CounselingTopic, ApplicantType } from './types/reservation';
 import { Clock, CheckCircle2, Sparkles } from 'lucide-react';
@@ -23,12 +24,19 @@ export function App() {
   const [isEmailSettingsOpen, setIsEmailSettingsOpen] = useState(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isCloudConnected, setIsCloudConnected] = useState(GoogleSheetService.isConfigured());
+
   // Toast state
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   // Refresh trigger for state updates
   const [, setRefreshCount] = useState(0);
-  const triggerRefresh = () => setRefreshCount(c => c + 1);
+  const triggerRefresh = useCallback(() => {
+    setRefreshCount(c => c + 1);
+    setIsCloudConnected(GoogleSheetService.isConfigured());
+  }, []);
 
   // Fetch slots for selected date
   const slots = StorageService.getSlotsForDate(selectedDate);
@@ -43,6 +51,33 @@ export function App() {
     });
   };
 
+  // 실시간 구글 시트 데이터 동기화
+  const syncWithCloud = useCallback(async (silent = false) => {
+    if (!GoogleSheetService.isConfigured()) return;
+    if (!silent) setIsSyncing(true);
+
+    const res = await GoogleSheetService.fetchCloudData();
+    if (!silent) setIsSyncing(false);
+
+    if (res.success) {
+      triggerRefresh();
+      if (!silent) {
+        showToast('success', '구글 시트와 실시간 동기화되었습니다.');
+      }
+    }
+  }, [triggerRefresh]);
+
+  // 앱 시작 시 구글 시트 데이터 자동 로드 & 25초 주기 백그라운드 동기화
+  useEffect(() => {
+    syncWithCloud(true);
+
+    const interval = setInterval(() => {
+      syncWithCloud(true);
+    }, 25000);
+
+    return () => clearInterval(interval);
+  }, [syncWithCloud]);
+
   // Student/Parent completes reservation
   const handleBookingSubmit = async (data: {
     studentName: string;
@@ -54,7 +89,7 @@ export function App() {
   }) => {
     if (!selectedSlot) return;
 
-    // 1. Add reservation to storage
+    // 1. Add reservation to storage locally
     const newReservation = StorageService.addReservation({
       studentName: data.studentName,
       applicantType: data.applicantType,
@@ -70,11 +105,14 @@ export function App() {
     setSelectedSlot(null);
     triggerRefresh();
 
-    // 2. Trigger Gmail Notification
+    // 2. 구글 시트 실시간 등록 (클라우드 동기화)
+    GoogleSheetService.createReservation(newReservation);
+
+    // 3. Gmail 발송 (EmailJS 또는 Webhook)
     const emailConfig = StorageService.getEmailConfig();
     const emailRes = await sendReservationNotificationEmail(newReservation, emailConfig);
 
-    // 3. Show Toast
+    // 4. Show Toast
     showToast(
       'success',
       `[${selectedDate} ${newReservation.timeSlot}] (${data.applicantType}) 상담 예약이 완료되었습니다! 비밀번호는 ${newReservation.passwordHash} 입니다. (${emailRes.message})`
@@ -88,8 +126,14 @@ export function App() {
         activeTab={activeTab}
         setActiveTab={(tab) => {
           setActiveTab(tab);
+          if (tab === 'booking' || tab === 'admin') {
+            syncWithCloud(true);
+          }
         }}
         isAdminLoggedIn={isAdminLoggedIn}
+        isCloudConnected={isCloudConnected}
+        isSyncing={isSyncing}
+        onManualSync={() => syncWithCloud(false)}
       />
 
       {/* Main Content Area */}
@@ -235,11 +279,18 @@ export function App() {
         />
       )}
 
-      {/* Email Settings Modal */}
+      {/* Email & Google Sheets Settings Modal */}
       {isEmailSettingsOpen && (
         <EmailSettingsModal
           onClose={() => setIsEmailSettingsOpen(false)}
-          onConfigSaved={() => showToast('success', '이메일 알림 설정이 저장되었습니다.')}
+          onConfigSaved={() => {
+            showToast('success', '설정이 저장되었습니다.');
+            triggerRefresh();
+          }}
+          onSyncCompleted={() => {
+            showToast('success', '구글 시트 실시간 동기화 완료!');
+            triggerRefresh();
+          }}
         />
       )}
 

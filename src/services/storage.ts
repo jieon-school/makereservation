@@ -290,5 +290,29 @@ export const StorageService = {
 
   setGuardianBookingEnabled(enabled: boolean): void {
     localStorage.setItem('counseling_allow_guardian_v1', String(enabled));
+  },
+
+  // --- Google Apps Script / Google Sheet URL ---
+  getGasUrl(): string {
+    const directUrl = localStorage.getItem('counseling_gas_url_v1');
+    if (directUrl) return directUrl.trim();
+
+    // 기존 EmailConfig에 저장된 webhookUrl이 있다면 마이그레이션
+    const emailConfig = this.getEmailConfig();
+    if (emailConfig.webhookUrl && emailConfig.webhookUrl.trim().startsWith('https://script.google.com/')) {
+      return emailConfig.webhookUrl.trim();
+    }
+    return '';
+  },
+
+  saveGasUrl(url: string): void {
+    localStorage.setItem('counseling_gas_url_v1', url.trim());
+    // EmailConfig에도 동기화
+    const emailConfig = this.getEmailConfig();
+    emailConfig.webhookUrl = url.trim();
+    if (url.trim()) {
+      emailConfig.provider = 'webhook';
+    }
+    this.saveEmailConfig(emailConfig);
   }
 };

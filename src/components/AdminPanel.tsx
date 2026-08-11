@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Lock, Clock, Mail, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, UserCheck, UserX, Ban } from 'lucide-react';
 import { StorageService, isNightSlot, isSunday, isSaturday, getDefaultSlotsForDate, getTodayString } from '../services/storage';
+import { GoogleSheetService } from '../services/googleSheetService';
 
 interface AdminPanelProps {
   selectedDate: string;
@@ -73,6 +74,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const next = !guardianEnabled;
     StorageService.setGuardianBookingEnabled(next);
     setGuardianEnabled(next);
+    GoogleSheetService.saveGuardianSetting(next);
     onDataChanged();
   };
 
@@ -97,6 +99,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     const newStatus = currentStatus === 'blocked' ? 'available' : 'blocked';
     StorageService.updateSlotForDate(selectedDate, time, newStatus);
+    GoogleSheetService.saveSchedules(StorageService.getDaySchedules());
     onDataChanged();
   };
 
@@ -116,6 +119,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         StorageService.updateSlotForDate(selectedDate, time, targetStatus);
       });
     }
+    GoogleSheetService.saveSchedules(StorageService.getDaySchedules());
     onDataChanged();
   };
 
@@ -149,6 +153,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         });
       }
     }
+    GoogleSheetService.saveSchedules(StorageService.getDaySchedules());
     onDataChanged();
     alert('주 단위 일정 설정이 일괄 적용되었습니다. 특정 날짜는 클릭하여 개별 마감 해제/조절이 가능합니다.');
   };
@@ -156,12 +161,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // 특정 날짜 전체 휴무/마감 토글
   const handleToggleClosedDay = () => {
     StorageService.toggleClosedDay(selectedDate, !isClosedDay);
+    GoogleSheetService.saveSchedules(StorageService.getDaySchedules());
     onDataChanged();
   };
 
   // 예약 상태 변경
   const handleStatusChange = (id: string, newStatus: any) => {
     StorageService.updateReservation(id, { status: newStatus });
+    GoogleSheetService.updateReservation(id, { status: newStatus });
     onDataChanged();
   };
 
