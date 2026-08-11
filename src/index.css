@@ -17,7 +17,7 @@
 
   --bg-gradient: linear-gradient(135deg, #F0FDF4 0%, #E6FFFA 40%, #F0F9FF 100%);
   --surface: #FFFFFF;
-  --surface-glass: rgba(255, 255, 255, 0.85);
+  --surface-glass: rgba(255, 255, 255, 0.9);
 
   --text-main: #0F172A;
   --text-muted: #64748B;
@@ -51,6 +51,11 @@
   padding: 0;
 }
 
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-family);
   background: var(--bg-gradient);
@@ -69,13 +74,13 @@ button, input, select, textarea {
   background: var(--surface-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   box-shadow: var(--shadow-md);
   border-radius: var(--radius-lg);
 }
 
 .glass-modal {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
@@ -84,29 +89,34 @@ button, input, select, textarea {
 
 /* Base Container */
 .container {
-  max-width: 1120px;
+  width: 100%;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 1.25rem;
 }
 
 /* Keyframes */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 0 0 var(--primary-glow); }
-  50% { box-shadow: 0 0 0 8px rgba(13, 148, 136, 0); }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
+  animation: fadeIn 0.25s ease-out forwards;
 }
 
 /* Form Styles */
 .form-group {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.15rem;
 }
 
 .form-label {
@@ -139,9 +149,9 @@ button, input, select, textarea {
   background: var(--primary);
   color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem 1.4rem;
   border-radius: var(--radius-md);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
   transition: var(--transition);
@@ -149,12 +159,17 @@ button, input, select, textarea {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  touch-action: manipulation;
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-secondary {
@@ -170,6 +185,7 @@ button, input, select, textarea {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  touch-action: manipulation;
 }
 
 .btn-secondary:hover {
@@ -186,6 +202,7 @@ button, input, select, textarea {
   font-size: 0.95rem;
   cursor: pointer;
   transition: var(--transition);
+  touch-action: manipulation;
 }
 
 .btn-danger:hover {
@@ -194,8 +211,8 @@ button, input, select, textarea {
 
 /* Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -203,4 +220,76 @@ button, input, select, textarea {
 ::-webkit-scrollbar-thumb {
   background: #CBD5E1;
   border-radius: 99px;
+}
+
+/* Hide scrollbar for carousel but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ============================================================
+   📱 Mobile Responsive Styles (Max Width: 640px)
+   ============================================================ */
+@media (max-width: 640px) {
+  .container {
+    padding: 0 0.85rem;
+  }
+
+  /* Date Picker carousel */
+  .date-carousel-container {
+    gap: 0.4rem !important;
+  }
+
+  /* Time slot grid 2-columns on mobile */
+  .slot-grid-responsive {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.6rem !important;
+  }
+
+  .slot-card-mobile {
+    padding: 0.75rem 0.5rem !important;
+    border-radius: 12px !important;
+  }
+
+  .slot-card-time {
+    font-size: 0.95rem !important;
+  }
+
+  /* Sticky Bottom Bar */
+  .bottom-sticky-bar {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    padding: 1rem !important;
+    bottom: 0.75rem !important;
+  }
+
+  .bottom-sticky-bar button {
+    width: 100% !important;
+    padding: 0.85rem !important;
+  }
+
+  /* Modals */
+  .modal-dialog-content {
+    width: 95vw !important;
+    padding: 1.25rem 1rem !important;
+    max-height: 92vh !important;
+  }
+
+  /* Navbar */
+  .navbar-logo-subtitle {
+    display: none !important;
+  }
+
+  .navbar-nav-btn {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  .cloud-sync-text {
+    display: none !important;
+  }
 }

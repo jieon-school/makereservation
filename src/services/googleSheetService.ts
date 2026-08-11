@@ -7,12 +7,38 @@ export interface CloudSyncData {
   guardianBookingEnabled?: boolean;
 }
 
+const MONTH_MAP: Record<string, string> = {
+  jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+  jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
+};
+
 export function normalizeDateKey(rawDate: any): string {
   if (!rawDate) return '';
   const trimmed = String(rawDate).trim();
+  
+  // 1. YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
 
-  // 괄호 안의 타임존 문자열 (한국 표준시, Korean Standard Time 등) 제거하여 Date 파싱 호환성 보장
+  // 2. YYYY. MM. DD. or YYYY/MM/DD or YYYY-M-D
+  const numMatch = trimmed.match(/^(\d{4})[.\-\/]\s*(\d{1,2})[.\-\/]\s*(\d{1,2})/);
+  if (numMatch) {
+    const y = numMatch[1];
+    const m = numMatch[2].padStart(2, '0');
+    const d = numMatch[3].padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // 3. Wed Aug 12 2026 ...
+  const engMatch = trimmed.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})\b/i);
+  if (engMatch) {
+    const monthStr = engMatch[1].toLowerCase();
+    const m = MONTH_MAP[monthStr];
+    const d = engMatch[2].padStart(2, '0');
+    const y = engMatch[3];
+    return `${y}-${m}-${d}`;
+  }
+
+  // 4. Fallback: Date Object
   const cleaned = trimmed.replace(/\s*\([^)]*\)/g, '').trim();
   const parsed = new Date(cleaned);
   if (!isNaN(parsed.getTime())) {

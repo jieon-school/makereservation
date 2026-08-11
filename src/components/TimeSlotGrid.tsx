@@ -71,9 +71,10 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
         key={slot.time}
         disabled={!isAvailable}
         onClick={() => isAvailable && onSelectSlot(slot.time)}
+        className="slot-card-mobile"
         style={{
-          padding: '1rem',
-          borderRadius: '16px',
+          padding: '0.9rem 0.6rem',
+          borderRadius: '14px',
           border: isSelected ? '2px solid #0D9488' : `1.5px solid ${borderColor}`,
           background: bgColor,
           color: textColor,
@@ -83,18 +84,18 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '0.4rem',
+          gap: '0.35rem',
           position: 'relative',
           boxShadow: isSelected 
-            ? '0 8px 20px rgba(13, 148, 136, 0.35)' 
-            : isAvailable ? '0 2px 8px rgba(0,0,0,0.03)' : 'none',
-          transform: isSelected ? 'scale(1.03)' : 'none',
+            ? '0 6px 16px rgba(13, 148, 136, 0.3)' 
+            : isAvailable ? '0 2px 6px rgba(0,0,0,0.03)' : 'none',
+          transform: isSelected ? 'scale(1.02)' : 'none',
           opacity: slot.status === 'blocked' ? 0.75 : 1
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Clock size={16} opacity={isSelected ? 1 : 0.7} />
-          <span style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+          <Clock size={15} opacity={isSelected ? 1 : 0.7} />
+          <span className="slot-card-time" style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
             {slot.time}
           </span>
         </div>
@@ -102,7 +103,7 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
         <span style={{
           fontSize: '0.72rem',
           fontWeight: 700,
-          padding: '2px 8px',
+          padding: '2px 7px',
           borderRadius: '99px',
           background: statusBg,
           color: statusColor,
@@ -119,50 +120,52 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', marginBottom: '2rem' }}>
-      {/* 주간 상담 타임 슬롯 (09:00 ~ 17:00) */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+      {/* 주간 상담 타임 슬롯 */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
-          <Sun size={18} color="#F59E0B" />
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1E293B' }}>
-            주간 상담 시간 (09:00 ~ 17:00)
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.6rem' }}>
+          <Sun size={17} color="#F59E0B" />
+          <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#1E293B' }}>
+            주간 상담 시간 (08:40 ~ 17:30)
           </h3>
         </div>
-        <div style={{
+        <div className="slot-grid-responsive" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-          gap: '0.85rem'
+          gap: '0.75rem'
         }}>
           {daySlots.map(renderSlotCard)}
         </div>
       </div>
 
-      {/* 야간 상담 타임 슬롯 (18:30 ~ 21:30) */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
-          <Moon size={18} color="#8B5CF6" />
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1E293B' }}>
-            야간 상담 시간 (18:30 ~ 21:30)
-          </h3>
-          <span style={{
-            background: '#F3E8FF',
-            color: '#8B5CF6',
-            fontSize: '0.72rem',
-            fontWeight: 700,
-            padding: '2px 8px',
-            borderRadius: '99px'
+      {/* 야간 상담 타임 슬롯 */}
+      {nightSlots.length > 0 && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.6rem' }}>
+            <Moon size={17} color="#8B5CF6" />
+            <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#1E293B' }}>
+              야간 상담 시간 (18:30 ~ 21:20)
+            </h3>
+            <span style={{
+              background: '#F3E8FF',
+              color: '#8B5CF6',
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: '99px'
+            }}>
+              야자 시간
+            </span>
+          </div>
+          <div className="slot-grid-responsive" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+            gap: '0.75rem'
           }}>
-            야간 야자 시간
-          </span>
+            {nightSlots.map(renderSlotCard)}
+          </div>
         </div>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-          gap: '0.85rem'
-        }}>
-          {nightSlots.map(renderSlotCard)}
-        </div>
-      </div>
+      )}
     </div>
   );
 };

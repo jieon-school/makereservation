@@ -138,48 +138,48 @@ export function App() {
       />
 
       {/* Main Content Area */}
-      <main className="container" style={{ flex: 1, padding: '2rem 1.5rem' }}>
+      <main className="container" style={{ flex: 1, padding: '1.25rem 0.5rem 3rem' }}>
         {activeTab === 'booking' && (
           <div className="animate-fade-in">
             {/* Banner Section */}
             <div className="glass-card" style={{
-              padding: '2rem',
-              marginBottom: '2rem',
+              padding: '1.25rem 1.25rem',
+              marginBottom: '1.25rem',
               background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%)',
               border: '1px solid rgba(13, 148, 136, 0.15)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
-              gap: '1.5rem'
+              gap: '1rem'
             }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                  <Sparkles size={20} color="#0D9488" />
-                  <span style={{ fontWeight: 800, color: '#0D9488', fontSize: '0.875rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem' }}>
+                  <Sparkles size={18} color="#0D9488" />
+                  <span style={{ fontWeight: 800, color: '#0D9488', fontSize: '0.825rem' }}>
                     {isGuardianEnabled ? '1:1 맞춤형 학생 / 보호자 상담' : '1:1 맞춤형 학생 상담 (보호자 예약 마감)'}
                   </span>
                 </div>
-                <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
+                <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em', lineHeight: 1.3 }}>
                   상담을 원하는 날짜와 시간을 선택해주세요
                 </h1>
-                <p style={{ fontSize: '0.95rem', color: '#64748B', marginTop: '0.3rem' }}>
+                <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '0.25rem' }}>
                   {isGuardianEnabled
-                    ? '학생 및 보호자 모두 신청 가능하며, 주간부터 야간(야자 3교시)까지 편한 시간을 선택하실 수 있습니다.'
-                    : '현재 학생(및 기타) 상담 예약만 접수 중이며, 주간부터 야간(야자 3교시)까지 편한 시간을 선택하실 수 있습니다.'}
+                    ? '학생 및 보호자 모두 신청 가능하며, 주간부터 야간(야자 3교시)까지 선택하실 수 있습니다.'
+                    : '현재 학생(및 기타) 상담 예약만 접수 중이며, 주간부터 야간까지 선택하실 수 있습니다.'}
                 </p>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <div style={{ background: '#FFFFFF', padding: '0.75rem 1.25rem', borderRadius: '14px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>신청 대상</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: isGuardianEnabled ? '#0F172A' : '#D97706' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', width: '100%' }}>
+                <div style={{ flex: '1 1 120px', background: '#FFFFFF', padding: '0.5rem 0.75rem', borderRadius: '12px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>신청 대상</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: isGuardianEnabled ? '#0F172A' : '#D97706' }}>
                     {isGuardianEnabled ? '학생 / 보호자 / 기타' : '학생 / 기타 (보호자 마감)'}
                   </div>
                 </div>
-                <div style={{ background: '#FFFFFF', padding: '0.75rem 1.25rem', borderRadius: '14px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>상담 주제</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0D9488' }}>수시 / 정시 / 생활 / 기타</div>
+                <div style={{ flex: '1 1 120px', background: '#FFFFFF', padding: '0.5rem 0.75rem', borderRadius: '12px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>상담 주제</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0D9488' }}>수시 / 정시 / 생활 / 기타</div>
                 </div>
               </div>
             </div>
@@ -203,27 +203,30 @@ export function App() {
 
             {/* Bottom Action Footer for Slot Selection */}
             {selectedSlot && (
-              <div style={{
-                position: 'sticky',
-                bottom: '2rem',
-                zIndex: 30,
-                background: '#0F172A',
-                color: '#FFFFFF',
-                padding: '1rem 1.5rem',
-                borderRadius: '20px',
-                boxShadow: '0 12px 32px rgba(15, 23, 42, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                animation: 'fadeIn 0.2s ease-out'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ background: '#0D9488', padding: '0.5rem', borderRadius: '10px' }}>
-                    <Clock size={20} color="#FFF" />
+              <div 
+                className="bottom-sticky-bar"
+                style={{
+                  position: 'sticky',
+                  bottom: '1.25rem',
+                  zIndex: 30,
+                  background: '#0F172A',
+                  color: '#FFFFFF',
+                  padding: '0.9rem 1.25rem',
+                  borderRadius: '16px',
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  animation: 'fadeIn 0.2s ease-out'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <div style={{ background: '#0D9488', padding: '0.45rem', borderRadius: '10px', flexShrink: 0 }}>
+                    <Clock size={18} color="#FFF" />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>선택하신 상담 일시</div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>
+                    <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>선택하신 상담 일시</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800 }}>
                       {selectedDate} <span style={{ color: '#2DD4BF' }}>{selectedSlot}</span>
                     </div>
                   </div>
@@ -232,10 +235,10 @@ export function App() {
                 <button
                   className="btn-primary"
                   onClick={() => setIsBookingModalOpen(true)}
-                  style={{ padding: '0.75rem 1.75rem', fontSize: '1rem' }}
+                  style={{ padding: '0.7rem 1.4rem', fontSize: '0.92rem' }}
                 >
-                  <CheckCircle2 size={18} />
-                  이 시간에 상담 신청하기
+                  <CheckCircle2 size={17} />
+                  상담 신청하기
                 </button>
               </div>
             )}

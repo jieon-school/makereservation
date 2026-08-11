@@ -94,12 +94,12 @@ export const LookupModal: React.FC<LookupModalProps> = ({
       padding: '1rem',
       animation: 'fadeIn 0.2s ease-out'
     }}>
-      <div className="glass-modal" style={{
+      <div className="glass-modal modal-dialog-content" style={{
         width: '100%',
-        maxWidth: '560px',
+        maxWidth: '540px',
         maxHeight: '90vh',
         overflowY: 'auto',
-        padding: '2rem',
+        padding: '1.75rem',
         position: 'relative'
       }}>
         {/* Close button */}

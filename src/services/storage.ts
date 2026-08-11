@@ -176,29 +176,22 @@ export const StorageService = {
       this.saveReservations(mergedRes);
     }
 
-    // 2. 일정 설정(마감일, 커스텀 슬롯) 타임스탬프 기반 스마트 병합
+    // 2. 일정 설정(마감일, 커스텀 슬롯) 클라우드 실시간 동기화
     if (cloudData.daySchedules && typeof cloudData.daySchedules === 'object') {
-      const localSchedules = this.getDaySchedules();
       const cloudSchedules = cloudData.daySchedules;
       const cloudKeys = Object.keys(cloudSchedules);
 
-      // 클라우드에 일정이 존재할 때만 병합 진행
+      // 클라우드에 일정이 존재할 때 로컬에 직접 반영
       if (cloudKeys.length > 0) {
+        const localSchedules = this.getDaySchedules();
         const mergedSchedules: Record<string, DaySchedule> = { ...localSchedules };
         for (const key of cloudKeys) {
           const cloudItem = cloudSchedules[key];
-          const localItem = localSchedules[key];
-
           if (cloudItem) {
-            // 로컬 수정 시각이 클라우드 수정 시각보다 최신이면 로컬 설정 우선 유지!
-            if (localItem && (localItem.updatedAt || 0) > (cloudItem.updatedAt || 0)) {
-              mergedSchedules[key] = localItem;
-            } else {
-              mergedSchedules[key] = {
-                ...mergedSchedules[key],
-                ...cloudItem
-              };
-            }
+            mergedSchedules[key] = {
+              ...mergedSchedules[key],
+              ...cloudItem
+            };
           }
         }
         this.saveDaySchedules(mergedSchedules);

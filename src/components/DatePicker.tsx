@@ -159,12 +159,17 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       </div>
 
       {/* Date Horizontal Carousel Cards */}
-      <div style={{
-        display: 'flex',
-        gap: '0.6rem',
-        overflowX: 'auto',
-        paddingBottom: '0.5rem'
-      }}>
+      <div 
+        className="no-scrollbar date-carousel-container"
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          overflowX: 'auto',
+          paddingBottom: '0.5rem',
+          WebkitOverflowScrolling: 'touch',
+          scrollSnapType: 'x mandatory'
+        }}
+      >
         {dates.map((item) => {
           const isSelected = item.dateStr === selectedDate;
           const isItemClosed = StorageService.isClosedDay(item.dateStr);
@@ -175,9 +180,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               onClick={() => onDateChange(item.dateStr)}
               style={{
                 flex: '0 0 auto',
-                minWidth: '64px',
-                padding: '0.75rem 0.5rem',
-                borderRadius: '14px',
+                minWidth: '58px',
+                padding: '0.65rem 0.45rem',
+                borderRadius: '13px',
                 border: isSelected ? '2px solid #0D9488' : '1px solid #E2E8F0',
                 background: isSelected 
                   ? 'linear-gradient(180deg, #0D9488 0%, #0F766E 100%)' 
@@ -189,24 +194,26 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 flexDirection: 'column',
                 alignItems: 'center',
                 boxShadow: isSelected ? '0 4px 12px rgba(13, 148, 136, 0.3)' : 'none',
-                position: 'relative'
+                position: 'relative',
+                scrollSnapAlign: 'start',
+                touchAction: 'manipulation'
               }}
             >
-              <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: isSelected ? 0.9 : 0.7 }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, opacity: isSelected ? 0.9 : 0.75 }}>
                 {item.dayName}
               </span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, margin: '2px 0' }}>
+              <span style={{ fontSize: '1.2rem', fontWeight: 800, margin: '1px 0' }}>
                 {item.dayNum}
               </span>
               {isItemClosed && (
                 <span style={{
-                  fontSize: '0.6rem',
+                  fontSize: '0.58rem',
                   fontWeight: 700,
                   padding: '1px 4px',
                   borderRadius: '4px',
                   background: isSelected ? 'rgba(255,255,255,0.25)' : '#FEE2E2',
                   color: isSelected ? '#FFF' : '#DC2626',
-                  marginTop: '2px'
+                  marginTop: '1px'
                 }}>
                   마감
                 </span>
