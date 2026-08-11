@@ -155,6 +155,53 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.DAY_SCHEDULES, JSON.stringify(schedules));
   },
 
+  // 클라우드(구글 시트) 데이터 스마트 병합 (로컬 마감 설정 보호)
+  mergeCloudData(cloudData: {
+    reservations?: Reservation[];
+    daySchedules?: Record<string, DaySchedule>;
+    guardianBookingEnabled?: boolean;
+  }): void {
+    // 1. 예약 목록 스마트 병합 (ID 기준 중복 제거)
+    if (Array.isArray(cloudData.reservations)) {
+      const localRes = this.getReservations();
+      const map = new Map<string, Reservation>();
+      
+      localRes.forEach(r => map.set(r.id, r));
+      cloudData.reservations.forEach(r => map.set(r.id, r));
+
+      const mergedRes = Array.from(map.values()).sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      this.saveReservations(mergedRes);
+    }
+
+    // 2. 일정 설정(마감일, 커스텀 슬롯) 스마트 병합
+    if (cloudData.daySchedules && typeof cloudData.daySchedules === 'object') {
+      const localSchedules = this.getDaySchedules();
+      const cloudSchedules = cloudData.daySchedules;
+      const cloudKeys = Object.keys(cloudSchedules);
+
+      // 클라우드에 일정이 존재할 때만 병합 진행 (빈 클라우드 응답으로 로컬 마감 설정이 초기화되는 문제 방지)
+      if (cloudKeys.length > 0) {
+        const mergedSchedules: Record<string, DaySchedule> = { ...localSchedules };
+        for (const key of cloudKeys) {
+          if (cloudSchedules[key]) {
+            mergedSchedules[key] = {
+              ...mergedSchedules[key],
+              ...cloudSchedules[key]
+            };
+          }
+        }
+        this.saveDaySchedules(mergedSchedules);
+      }
+    }
+
+    // 3. 보호자 예약 활성화 여부
+    if (cloudData.guardianBookingEnabled !== undefined) {
+      this.setGuardianBookingEnabled(cloudData.guardianBookingEnabled);
+    }
+  },
+
   // 특정 날짜의 휴무(마감) 여부 (일요일은 기본 휴무)
   isClosedDay(dateStr: string): boolean {
     const daySchedules = this.getDaySchedules();

@@ -119,9 +119,22 @@ function doGet(e) {
     for (var i = 1; i < resData.length; i++) {
       var row = resData[i];
       if (row[0]) {
+        var rawResDate = row[1];
+        var resDateStr = "";
+        if (rawResDate instanceof Date) {
+          var ry = rawResDate.getFullYear();
+          var rm = String(rawResDate.getMonth() + 1);
+          if (rm.length < 2) rm = "0" + rm;
+          var rd = String(rawResDate.getDate());
+          if (rd.length < 2) rd = "0" + rd;
+          resDateStr = ry + "-" + rm + "-" + rd;
+        } else {
+          resDateStr = String(rawResDate).replace(/^'/, '').trim();
+        }
+
         reservations.push({
           id: String(row[0]),
-          date: String(row[1]),
+          date: resDateStr,
           timeSlot: String(row[2]),
           applicantType: String(row[3] || '학생'),
           studentName: String(row[4]),
@@ -141,17 +154,31 @@ function doGet(e) {
     for (var j = 1; j < schedData.length; j++) {
       var sRow = schedData[j];
       if (sRow[0]) {
-        var dStr = String(sRow[0]);
-        var isClosed = sRow[1] === true || String(sRow[1]) === 'true';
+        var rawD = sRow[0];
+        var dStr = "";
+        if (rawD instanceof Date) {
+          var y = rawD.getFullYear();
+          var m = String(rawD.getMonth() + 1);
+          if (m.length < 2) m = "0" + m;
+          var d = String(rawD.getDate());
+          if (d.length < 2) d = "0" + d;
+          dStr = y + "-" + m + "-" + d;
+        } else {
+          dStr = String(rawD).replace(/^'/, '').trim();
+        }
+
+        var isClosed = sRow[1] === true || String(sRow[1]).toLowerCase() === 'true';
         var customSlots = [];
         try {
           if (sRow[2]) customSlots = JSON.parse(sRow[2]);
         } catch(e){}
-        daySchedules[dStr] = {
-          date: dStr,
-          isClosedDay: isClosed,
-          customSlots: customSlots
-        };
+        if (dStr) {
+          daySchedules[dStr] = {
+            date: dStr,
+            isClosedDay: isClosed,
+            customSlots: customSlots
+          };
+        }
       }
     }
 
@@ -264,11 +291,13 @@ function doPost(e) {
       schedSheet.appendRow(["날짜", "휴무여부", "커스텀슬롯JSON"]);
       for (var dateKey in daySchedules) {
         var sObj = daySchedules[dateKey];
-        schedSheet.appendRow([
-          dateKey,
-          !!sObj.isClosedDay,
-          JSON.stringify(sObj.customSlots || [])
-        ]);
+        if (sObj) {
+          schedSheet.appendRow([
+            "'" + String(dateKey).trim(),
+            !!sObj.isClosedDay,
+            JSON.stringify(sObj.customSlots || [])
+          ]);
+        }
       }
       return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
         .setMimeType(ContentService.MimeType.JSON);
