@@ -358,28 +358,70 @@ export const EmailSettingsModal: React.FC<EmailSettingsModalProps> = ({
             </ol>
 
             <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#6366F1', marginBottom: '0.5rem' }}>
-              ⚡ Google Apps Script 웹앱 연동 3단계
+              ⚡ Google Apps Script 웹앱 연동 (핵심 4단계)
             </h4>
-            <ol style={{ paddingLeft: '1.2rem' }}>
-              <li><strong>Google Drive</strong>에서 새 [Google Apps Script] 생성.</li>
-              <li>아래 수신 코드를 작성 후 [웹앱으로 배포] (액세스 권한: 모든 사용자).</li>
-              <li>생성된 Webhook URL을 설정창의 Google Apps Script URL 칸에 입력.</li>
+            <ol style={{ paddingLeft: '1.2rem', marginBottom: '0.8rem' }}>
+              <li><strong>script.google.com</strong> 접속 ➔ [새 프로젝트] 생성 후 아래 코드를 전체 붙여넣기.</li>
+              <li><strong>⚠️ 최초 권한 승인 (필수)</strong>: 상단 함수 선택에서 <code>testRun</code> 선택 후 <strong>[실행 ▶]</strong> 클릭 ➔ '권한 검토' ➔ '고급' ➔ '이동' ➔ '허용' 클릭! (테스트 메일 수신 확인)</li>
+              <li><strong>웹앱 배포 설정</strong>: 우측 상단 <strong>[배포] ➔ [새 배포] ➔ 유형: [웹 앱]</strong> 선택:
+                <ul style={{ marginTop: '4px', color: '#4F46E5', fontWeight: 600 }}>
+                  <li>• 다음 사용자로 실행: <strong>나(내 계정 - your@gmail.com)</strong></li>
+                  <li>• 액세스 권한이 있는 사용자: <strong>모든 사용자 (Anyone)</strong> ⭐️ (중요)</li>
+                </ul>
+              </li>
+              <li>배포 완료 후 나오는 <strong>웹 앱 URL (https://script.google.com/macros/s/.../exec)</strong>을 복사하여 위 Webhook URL 칸에 넣고 [설정 저장]!</li>
             </ol>
             <pre style={{
               background: '#0F172A',
               color: '#F8FAFC',
-              padding: '0.75rem',
+              padding: '0.85rem',
               borderRadius: '10px',
-              fontSize: '0.75rem',
+              fontSize: '0.73rem',
+              lineHeight: 1.45,
               marginTop: '0.5rem',
               overflowX: 'auto'
             }}>
 {`function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-  var subject = "[상담 예약] " + data.student_name + " 학생 상담 신청";
-  var body = "학생: " + data.student_name + "\\n일시: " + data.reservation_date + " " + data.reservation_time + "\\n주제: " + data.topic;
-  MailApp.sendEmail("${config.adminEmail}", subject, body);
-  return ContentService.createTextOutput("OK");
+  try {
+    var raw = e.postData.contents;
+    var data = JSON.parse(raw);
+    
+    var recipient = data.to_email || "${config.adminEmail}";
+    var applicantType = data.applicant_type || "학생";
+    var studentName = data.student_name || "이름 없음";
+    var gradeClass = data.student_grade_class || "-";
+    var topic = data.topic || "-";
+    var date = data.reservation_date || "-";
+    var time = data.reservation_time || "-";
+    var notes = data.notes || "없음";
+    var createdAt = data.created_at || new Date().toLocaleString("ko-KR");
+    
+    var subject = "[상담 예약 알림] (" + applicantType + ") " + studentName + " - " + date + " " + time;
+    
+    var body = "🔔 새로운 상담 예약이 접수되었습니다.\\n\\n"
+             + "▪ 신청자 구분: " + applicantType + "\\n"
+             + "▪ 신청자 이름: " + studentName + "\\n"
+             + "▪ 학년/반/번호: " + gradeClass + "\\n"
+             + "▪ 상담 일시: " + date + " " + time + "\\n"
+             + "▪ 상담 주제: " + topic + "\\n"
+             + "▪ 전하고 싶은 말: " + notes + "\\n"
+             + "▪ 접수 일시: " + createdAt + "\\n\\n"
+             + "웹 상담 관리자 페이지에서 예약 현황을 확인하실 수 있습니다.";
+             
+    MailApp.sendEmail(recipient, subject, body);
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ⚠️ 최초 1회 권한 승인을 위한 테스트 함수 (에디터 상단에서 testRun 선택 후 [실행 ▶] 클릭!)
+function testRun() {
+  MailApp.sendEmail("${config.adminEmail}", "[테스트] 상담 예약 시스템 연동 확인", "Google Apps Script 메일 발송 권한이 정상적으로 승인되었습니다.");
+  Logger.log("테스트 메일이 전송되었습니다.");
 }`}
             </pre>
           </div>

@@ -70,11 +70,11 @@ export async function sendReservationNotificationEmail(
   }
 
   // 2. Google Apps Script Webhook 방식
-  if (config.provider === 'webhook' && config.webhookUrl) {
+  if (config.provider === 'webhook' && config.webhookUrl && config.webhookUrl.trim()) {
     try {
-      await fetch(config.webhookUrl, {
+      await fetch(config.webhookUrl.trim(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(emailData),
         mode: 'no-cors'
       });
