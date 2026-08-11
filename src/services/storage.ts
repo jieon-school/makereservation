@@ -1,4 +1,5 @@
 import type { Reservation, DaySchedule, TimeSlotConfig, EmailConfig, EmailLog } from '../types/reservation';
+import { GLOBAL_GAS_URL } from '../config/backend';
 
 const STORAGE_KEYS = {
   RESERVATIONS: 'counseling_reservations_v3',
@@ -374,13 +375,21 @@ export const StorageService = {
   // --- Google Apps Script / Google Sheet URL ---
   getGasUrl(): string {
     const directUrl = localStorage.getItem('counseling_gas_url_v1');
-    if (directUrl) return directUrl.trim();
+    if (directUrl && directUrl.trim().startsWith('https://script.google.com/')) {
+      return directUrl.trim();
+    }
 
     // 기존 EmailConfig에 저장된 webhookUrl이 있다면 마이그레이션
     const emailConfig = this.getEmailConfig();
     if (emailConfig.webhookUrl && emailConfig.webhookUrl.trim().startsWith('https://script.google.com/')) {
       return emailConfig.webhookUrl.trim();
     }
+
+    // 전역 배포된 백엔드 URL (모든 학생/학부모 기기 공통 자동 적용)
+    if (GLOBAL_GAS_URL && GLOBAL_GAS_URL.trim().startsWith('https://script.google.com/')) {
+      return GLOBAL_GAS_URL.trim();
+    }
+
     return '';
   },
 
