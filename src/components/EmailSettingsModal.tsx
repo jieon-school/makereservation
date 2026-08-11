@@ -53,7 +53,7 @@ export const EmailSettingsModal: React.FC<EmailSettingsModalProps> = ({
     } else {
       setTestResult({
         success: false,
-        message: `구글 시트 연결 실패: ${res.message}`
+        message: `구글 시트 응답 확인 필요: 이전 이메일 전용 스크립트이거나 권한 설정이 필요합니다. [가이드] 탭의 코드를 복사하여 구글 시트의 [Apps Script]에 붙여넣고 [새 배포]를 해주세요!`
       });
     }
   };
