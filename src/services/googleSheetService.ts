@@ -12,7 +12,9 @@ export function normalizeDateKey(rawDate: any): string {
   const trimmed = String(rawDate).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
 
-  const parsed = new Date(trimmed);
+  // 괄호 안의 타임존 문자열 (한국 표준시, Korean Standard Time 등) 제거하여 Date 파싱 호환성 보장
+  const cleaned = trimmed.replace(/\s*\([^)]*\)/g, '').trim();
+  const parsed = new Date(cleaned);
   if (!isNaN(parsed.getTime())) {
     const y = parsed.getFullYear();
     const m = String(parsed.getMonth() + 1).padStart(2, '0');
