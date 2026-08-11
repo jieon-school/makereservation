@@ -7,6 +7,21 @@ export interface CloudSyncData {
   guardianBookingEnabled?: boolean;
 }
 
+export function normalizeDateKey(rawDate: any): string {
+  if (!rawDate) return '';
+  const trimmed = String(rawDate).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const parsed = new Date(trimmed);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return trimmed;
+}
+
 export const GoogleSheetService = {
   getScriptUrl(): string {
     return StorageService.getGasUrl();
@@ -33,22 +48,51 @@ export const GoogleSheetService = {
 
       const json = await response.json();
       if (json && json.status === 'success') {
-        const reservations: Reservation[] = Array.isArray(json.reservations) ? json.reservations : [];
-        const daySchedules: Record<string, DaySchedule> = json.daySchedules || {};
         const guardianBookingEnabled: boolean | undefined = json.guardianBookingEnabled !== undefined ? !!json.guardianBookingEnabled : undefined;
+
+        // 1. 예약 목록 정규화
+        const normalizedReservations: Reservation[] = [];
+        if (Array.isArray(json.reservations)) {
+          json.reservations.forEach((r: any) => {
+            if (r && r.id) {
+              normalizedReservations.push({
+                ...r,
+                date: normalizeDateKey(r.date)
+              });
+            }
+          });
+        }
+
+        // 2. 일정 설정(마감일, 슬롯) 정규화
+        const normalizedDaySchedules: Record<string, DaySchedule> = {};
+        if (json.daySchedules && typeof json.daySchedules === 'object') {
+          for (const rawKey of Object.keys(json.daySchedules)) {
+            const normalizedKey = normalizeDateKey(rawKey);
+            if (normalizedKey) {
+              const item = json.daySchedules[rawKey];
+              let customSlots = item.customSlots;
+              if (typeof customSlots === 'string') {
+                try {
+                  customSlots = JSON.parse(customSlots);
+                } catch {
+                  customSlots = [];
+                }
+              }
+              normalizedDaySchedules[normalizedKey] = {
+                date: normalizedKey,
+                isClosedDay: item.isClosedDay === true || String(item.isClosedDay).toLowerCase() === 'true',
+                customSlots: Array.isArray(customSlots) ? customSlots : []
+              };
+            }
+          }
+        }
 
         // 스마트 병합 수행 (로컬 마감 일정이 비어있는 클라우드 데이터로 덮어씌워지는 문제 방지)
         StorageService.mergeCloudData({
-          reservations,
-          daySchedules,
+          reservations: normalizedReservations,
+          daySchedules: normalizedDaySchedules,
           guardianBookingEnabled
         });
-
-        // 만약 클라우드 일정 시트가 비어있고 로컬에 마감 일정이 있다면 클라우드로 즉시 저장
-        const localSchedules = StorageService.getDaySchedules();
-        if (Object.keys(daySchedules).length === 0 && Object.keys(localSchedules).length > 0) {
-          this.saveSchedules(localSchedules);
-        }
 
         return {
           success: true,
