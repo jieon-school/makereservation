@@ -22,6 +22,7 @@ export function App() {
   // Modals state
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isEmailSettingsOpen, setIsEmailSettingsOpen] = useState(false);
+  const [emailModalTab, setEmailModalTab] = useState<'config' | 'logs' | 'guide'>('config');
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
   // Sync state
@@ -263,7 +264,10 @@ export function App() {
             onDateChange={setSelectedDate}
             isAdminLoggedIn={isAdminLoggedIn}
             setIsAdminLoggedIn={setIsAdminLoggedIn}
-            onOpenEmailSettings={() => setIsEmailSettingsOpen(true)}
+            onOpenEmailSettings={(tab = 'config') => {
+              setEmailModalTab(tab);
+              setIsEmailSettingsOpen(true);
+            }}
             onDataChanged={triggerRefresh}
           />
         )}
@@ -282,6 +286,7 @@ export function App() {
       {/* Email & Google Sheets Settings Modal */}
       {isEmailSettingsOpen && (
         <EmailSettingsModal
+          initialTab={emailModalTab}
           onClose={() => setIsEmailSettingsOpen(false)}
           onConfigSaved={() => {
             showToast('success', '설정이 저장되었습니다.');

@@ -9,17 +9,19 @@ interface EmailSettingsModalProps {
   onClose: () => void;
   onConfigSaved: (config: EmailConfig) => void;
   onSyncCompleted?: () => void;
+  initialTab?: 'config' | 'logs' | 'guide';
 }
 
 export const EmailSettingsModal: React.FC<EmailSettingsModalProps> = ({
   onClose,
   onConfigSaved,
-  onSyncCompleted
+  onSyncCompleted,
+  initialTab = 'config'
 }) => {
   const [config, setConfig] = useState<EmailConfig>(StorageService.getEmailConfig());
   const [gasUrl, setGasUrl] = useState<string>(StorageService.getGasUrl());
   const [logs, setLogs] = useState<EmailLog[]>(StorageService.getEmailLogs());
-  const [activeTab, setActiveTab] = useState<'config' | 'logs' | 'guide'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'logs' | 'guide'>(initialTab);
   const [testResult, setTestResult] = useState<{ success?: boolean; message?: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Clock, Mail, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, UserCheck, UserX, Ban } from 'lucide-react';
+import { ShieldCheck, Lock, Clock, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, UserCheck, UserX, Ban, Database, FileText } from 'lucide-react';
 import { StorageService, isNightSlot, isSunday, isSaturday, getDefaultSlotsForDate, getTodayString } from '../services/storage';
 import { GoogleSheetService } from '../services/googleSheetService';
 
@@ -8,7 +8,7 @@ interface AdminPanelProps {
   onDateChange: (date: string) => void;
   isAdminLoggedIn: boolean;
   setIsAdminLoggedIn: (val: boolean) => void;
-  onOpenEmailSettings: () => void;
+  onOpenEmailSettings: (tab?: 'config' | 'guide') => void;
   onDataChanged: () => void;
 }
 
@@ -36,6 +36,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const isClosedDay = StorageService.isClosedDay(selectedDate);
   const isSelectedSaturday = isSaturday(selectedDate);
   const isSelectedSunday = isSunday(selectedDate);
+  const isCloudConnected = GoogleSheetService.isConfigured();
 
   // 21일간 날짜 목록 생성 (관리자 빠른 날짜 선택용)
   const dateList: { dateStr: string; dayName: string; dayNum: number; isWeekend: boolean; isSunday: boolean; isSaturday: boolean }[] = [];
@@ -249,6 +250,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.75rem',
         background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 100%)',
         color: '#FFFFFF'
       }}>
@@ -262,14 +265,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.6rem' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           <button
-            onClick={onOpenEmailSettings}
+            onClick={() => onOpenEmailSettings('guide')}
+            className="btn-primary"
+            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: '#0D9488', border: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
+          >
+            <FileText size={16} />
+            📋 구글 시트 연동 가이드 (코드 복사)
+          </button>
+          <button
+            onClick={() => onOpenEmailSettings('config')}
             className="btn-secondary"
             style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', background: 'rgba(255,255,255,0.15)', color: '#FFF', border: 'none' }}
           >
-            <Mail size={16} />
-            Gmail 알림 설정
+            <Database size={16} />
+            연동 URL & Gmail 설정
           </button>
           <button
             onClick={() => setIsAdminLoggedIn(false)}
@@ -277,6 +288,99 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', background: 'transparent', color: '#CBD5E1', border: '1px solid rgba(255,255,255,0.2)' }}
           >
             로그아웃
+          </button>
+        </div>
+      </div>
+
+      {/* Google Sheets Cloud DB Realtime Sync Card */}
+      <div style={{
+        background: isCloudConnected 
+          ? 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)' 
+          : 'linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%)',
+        border: isCloudConnected ? '1.5px solid #A7F3D0' : '1.5px solid #C7D2FE',
+        padding: '1.1rem 1.35rem',
+        borderRadius: '16px',
+        marginBottom: '1.25rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
+            background: isCloudConnected ? '#10B981' : '#6366F1',
+            color: '#FFFFFF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+          }}>
+            <Database size={22} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span style={{ fontWeight: 800, fontSize: '1rem', color: isCloudConnected ? '#065F46' : '#3730A3' }}>
+                📊 구글 스프레드시트(Google Sheets) 실시간 클라우드 DB
+              </span>
+              <span style={{
+                background: isCloudConnected ? '#D1FAE5' : '#E0E7FF',
+                color: isCloudConnected ? '#059669' : '#4338CA',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                padding: '2px 8px',
+                borderRadius: '99px'
+              }}>
+                {isCloudConnected ? '🟢 실시간 연동 활성화' : '⚪ 연동 필요'}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.82rem', color: isCloudConnected ? '#047857' : '#4F46E5', marginTop: '3px' }}>
+              {isCloudConnected
+                ? '학생들이 스마트폰에서 예약한 내용이 선생님 구글 시트에 실시간으로 기록되고 동기화됩니다.'
+                : '구글 시트를 연결하면 모든 학생/학부모 기기 간 예약이 실시간으로 100% 동기화됩니다 (2분 소요).'}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => onOpenEmailSettings('guide')}
+            style={{
+              background: '#0D9488',
+              color: '#FFFFFF',
+              border: 'none',
+              padding: '0.55rem 1rem',
+              borderRadius: '10px',
+              fontWeight: 800,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              boxShadow: '0 2px 6px rgba(13,148,136,0.3)'
+            }}
+          >
+            <FileText size={15} />
+            가이드 & 스크립트 복사
+          </button>
+          <button
+            onClick={() => onOpenEmailSettings('config')}
+            style={{
+              background: '#FFFFFF',
+              color: '#4F46E5',
+              border: '1.5px solid #C7D2FE',
+              padding: '0.55rem 1rem',
+              borderRadius: '10px',
+              fontWeight: 800,
+              fontSize: '0.85rem',
+              cursor: 'pointer'
+            }}
+          >
+            ⚙️ 연동 URL 설정
           </button>
         </div>
       </div>
