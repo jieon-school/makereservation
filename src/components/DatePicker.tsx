@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getTodayString } from '../services/storage';
+import { getTodayString, StorageService } from '../services/storage';
 
 interface DatePickerProps {
   selectedDate: string; // YYYY-MM-DD
@@ -12,7 +12,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   onDateChange
 }) => {
   // 오늘 날짜부터 14일간의 날짜 목록 생성
-  const dates: { dateStr: string; dayName: string; dayNum: number; isWeekend: boolean }[] = [];
+  const dates: { dateStr: string; dayName: string; dayNum: number; isWeekend: boolean; isSunday: boolean; isSaturday: boolean }[] = [];
   const today = new Date();
   
   for (let i = 0; i < 14; i++) {
@@ -31,7 +31,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       dateStr,
       dayName,
       dayNum: d.getDate(),
-      isWeekend
+      isWeekend,
+      isSunday: d.getDay() === 0,
+      isSaturday: d.getDay() === 6
     });
   }
 
@@ -55,6 +57,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${dayNames[d.getDay()]})`;
   };
 
+  const isCurrentDateClosed = StorageService.isClosedDay(selectedDate);
+
   return (
     <div style={{ marginBottom: '1.5rem' }}>
       {/* Calendar Header Title Bar */}
@@ -62,7 +66,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '1rem'
+        marginBottom: '1rem',
+        flexWrap: 'wrap',
+        gap: '0.5rem'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <CalendarIcon size={20} color="#0D9488" />
@@ -79,6 +85,18 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               borderRadius: '99px'
             }}>
               오늘
+            </span>
+          )}
+          {isCurrentDateClosed && (
+            <span style={{
+              background: '#FEE2E2',
+              color: '#DC2626',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: '99px'
+            }}>
+              예약 마감/휴무
             </span>
           )}
         </div>
@@ -149,6 +167,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       }}>
         {dates.map((item) => {
           const isSelected = item.dateStr === selectedDate;
+          const isItemClosed = StorageService.isClosedDay(item.dateStr);
+
           return (
             <button
               key={item.dateStr}
@@ -161,14 +181,15 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                 border: isSelected ? '2px solid #0D9488' : '1px solid #E2E8F0',
                 background: isSelected 
                   ? 'linear-gradient(180deg, #0D9488 0%, #0F766E 100%)' 
-                  : item.isWeekend ? '#F8FAFC' : '#FFFFFF',
-                color: isSelected ? '#FFFFFF' : item.isWeekend ? '#EF4444' : '#0F172A',
+                  : isItemClosed ? '#FEF2F2' : item.isWeekend ? '#F8FAFC' : '#FFFFFF',
+                color: isSelected ? '#FFFFFF' : isItemClosed ? '#DC2626' : item.isSunday ? '#EF4444' : item.isSaturday ? '#2563EB' : '#0F172A',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                boxShadow: isSelected ? '0 4px 12px rgba(13, 148, 136, 0.3)' : 'none'
+                boxShadow: isSelected ? '0 4px 12px rgba(13, 148, 136, 0.3)' : 'none',
+                position: 'relative'
               }}
             >
               <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: isSelected ? 0.9 : 0.7 }}>
@@ -177,6 +198,19 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               <span style={{ fontSize: '1.25rem', fontWeight: 800, margin: '2px 0' }}>
                 {item.dayNum}
               </span>
+              {isItemClosed && (
+                <span style={{
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  padding: '1px 4px',
+                  borderRadius: '4px',
+                  background: isSelected ? 'rgba(255,255,255,0.25)' : '#FEE2E2',
+                  color: isSelected ? '#FFF' : '#DC2626',
+                  marginTop: '2px'
+                }}>
+                  마감
+                </span>
+              )}
             </button>
           );
         })}

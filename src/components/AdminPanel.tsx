@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Clock, Mail, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, UserCheck, UserX } from 'lucide-react';
-import { StorageService, DEFAULT_TIME_SLOTS, isNightSlot, getTodayString } from '../services/storage';
+import { ShieldCheck, Lock, Clock, Mail, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, UserCheck, UserX, Ban } from 'lucide-react';
+import { StorageService, isNightSlot, isSunday, isSaturday, getDefaultSlotsForDate, getTodayString } from '../services/storage';
 
 interface AdminPanelProps {
   selectedDate: string;
@@ -32,11 +32,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Reservations list & slots
   const reservations = StorageService.getReservations();
   const daySlots = StorageService.getSlotsForDate(selectedDate);
-  const daySchedules = StorageService.getDaySchedules();
-  const isClosedDay = !!daySchedules[selectedDate]?.isClosedDay;
+  const isClosedDay = StorageService.isClosedDay(selectedDate);
+  const isSelectedSaturday = isSaturday(selectedDate);
+  const isSelectedSunday = isSunday(selectedDate);
 
-  // 14일간 날짜 목록 생성 (관리자 빠른 날짜 선택용)
-  const dateList: { dateStr: string; dayName: string; dayNum: number; isWeekend: boolean }[] = [];
+  // 21일간 날짜 목록 생성 (관리자 빠른 날짜 선택용)
+  const dateList: { dateStr: string; dayName: string; dayNum: number; isWeekend: boolean; isSunday: boolean; isSaturday: boolean }[] = [];
   const today = new Date();
   for (let i = 0; i < 21; i++) { // 3주 분량
     const d = new Date(today);
@@ -50,7 +51,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       dateStr,
       dayName: dayNames[d.getDay()],
       dayNum: d.getDate(),
-      isWeekend: d.getDay() === 0 || d.getDay() === 6
+      isWeekend: d.getDay() === 0 || d.getDay() === 6,
+      isSunday: d.getDay() === 0,
+      isSaturday: d.getDay() === 6
     });
   }
 
@@ -99,14 +102,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // 일괄 토글 (현재 선택 날짜)
   const handleBulkSet = (type: 'all_available' | 'all_blocked' | 'day_only' | 'night_only') => {
-    DEFAULT_TIME_SLOTS.forEach(time => {
-      let targetStatus: 'available' | 'blocked' = 'available';
-      if (type === 'all_blocked') targetStatus = 'blocked';
-      else if (type === 'day_only') targetStatus = isNightSlot(time) ? 'blocked' : 'available';
-      else if (type === 'night_only') targetStatus = !isNightSlot(time) ? 'blocked' : 'available';
+    if (type === 'all_blocked') {
+      StorageService.toggleClosedDay(selectedDate, true);
+    } else {
+      // 마감 해제하고 슬롯 설정 적용
+      StorageService.toggleClosedDay(selectedDate, false);
+      const targetSlots = getDefaultSlotsForDate(selectedDate);
+      targetSlots.forEach(time => {
+        let targetStatus: 'available' | 'blocked' = 'available';
+        if (type === 'day_only') targetStatus = isNightSlot(time) ? 'blocked' : 'available';
+        else if (type === 'night_only') targetStatus = !isNightSlot(time) ? 'blocked' : 'available';
 
-      StorageService.updateSlotForDate(selectedDate, time, targetStatus);
-    });
+        StorageService.updateSlotForDate(selectedDate, time, targetStatus);
+      });
+    }
     onDataChanged();
   };
 
@@ -115,8 +124,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const confirmMsg = mode === 'day_only'
       ? '향후 7일간 모든 날짜의 [주간 상담 슬롯]을 오픈하시겠습니까?'
       : mode === 'all_open'
-      ? '향후 7일간의 모든 날짜 [주간+야간 슬롯 전체]를 오픈하시겠습니까?'
-      : '향후 7일간의 모든 날짜 예약을 [전체 마감]하시겠습니까?';
+      ? '향후 7일간의 모든 날짜 [주간+야간 슬롯 전체]를 오픈하시겠습니까? (토요일은 주간만 오픈)'
+      : '향후 7일간의 모든 날짜 예약을 [전체 마감(휴무)]하시겠습니까? (이후 각 날짜를 눌러 개별 마감 해제 가능)';
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -130,7 +139,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         StorageService.toggleClosedDay(dateStr, true);
       } else {
         StorageService.toggleClosedDay(dateStr, false);
-        DEFAULT_TIME_SLOTS.forEach(time => {
+        const slotsForDay = getDefaultSlotsForDate(dateStr);
+        slotsForDay.forEach(time => {
           let status: 'available' | 'blocked' = 'available';
           if (mode === 'day_only') {
             status = isNightSlot(time) ? 'blocked' : 'available';
@@ -140,10 +150,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }
     }
     onDataChanged();
-    alert('주 단위 일정 설정이 일괄 적용되었습니다.');
+    alert('주 단위 일정 설정이 일괄 적용되었습니다. 특정 날짜는 클릭하여 개별 마감 해제/조절이 가능합니다.');
   };
 
-  // 특정 날짜 전체 휴무 토글
+  // 특정 날짜 전체 휴무/마감 토글
   const handleToggleClosedDay = () => {
     StorageService.toggleClosedDay(selectedDate, !isClosedDay);
     onDataChanged();
@@ -228,7 +238,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Admin Top Banner */}
       <div className="glass-card" style={{
         padding: '1.25rem 1.5rem',
-        marginBottom: '1.5rem',
+        marginBottom: '1.25rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -381,6 +391,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     오늘
                   </span>
                 )}
+                {isClosedDay && (
+                  <span style={{ background: '#FEE2E2', color: '#DC2626', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '99px' }}>
+                    {isSelectedSunday ? '일요일 기본휴무' : '마감/휴무 상태'}
+                  </span>
+                )}
+                {isSelectedSaturday && (
+                  <span style={{ background: '#EFF6FF', color: '#2563EB', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '99px' }}>
+                    토요일 (주간만 운영)
+                  </span>
+                )}
               </div>
 
               {/* Direct Date Picker & Arrows */}
@@ -439,23 +459,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.4rem' }}>
               {dateList.map((item) => {
                 const isSelected = item.dateStr === selectedDate;
+                const isItemClosed = StorageService.isClosedDay(item.dateStr);
+
                 return (
                   <button
                     key={item.dateStr}
                     onClick={() => onDateChange(item.dateStr)}
                     style={{
                       flex: '0 0 auto',
-                      minWidth: '58px',
+                      minWidth: '60px',
                       padding: '0.65rem 0.4rem',
                       borderRadius: '12px',
                       border: isSelected ? '2px solid #6366F1' : '1px solid #E2E8F0',
-                      background: isSelected ? '#6366F1' : item.isWeekend ? '#F1F5F9' : '#FFFFFF',
-                      color: isSelected ? '#FFFFFF' : item.isWeekend ? '#EF4444' : '#0F172A',
+                      background: isSelected ? '#6366F1' : isItemClosed ? '#FEF2F2' : item.isWeekend ? '#F8FAFC' : '#FFFFFF',
+                      color: isSelected ? '#FFFFFF' : isItemClosed ? '#DC2626' : item.isSunday ? '#EF4444' : item.isSaturday ? '#2563EB' : '#0F172A',
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      transition: 'all 0.15s ease'
+                      transition: 'all 0.15s ease',
+                      position: 'relative'
                     }}
                   >
                     <span style={{ fontSize: '0.72rem', fontWeight: 600, opacity: isSelected ? 0.9 : 0.7 }}>
@@ -464,6 +487,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <span style={{ fontSize: '1.15rem', fontWeight: 800, margin: '2px 0' }}>
                       {item.dayNum}
                     </span>
+                    {isItemClosed && (
+                      <span style={{
+                        fontSize: '0.6rem',
+                        fontWeight: 700,
+                        padding: '1px 4px',
+                        borderRadius: '4px',
+                        background: isSelected ? 'rgba(255,255,255,0.25)' : '#FEE2E2',
+                        color: isSelected ? '#FFF' : '#DC2626',
+                        marginTop: '2px'
+                      }}>
+                        휴무
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -517,7 +553,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A' }}>
-                [{selectedDate}] 시간 슬롯 관리
+                [{selectedDate}] 시간 슬롯 관리 {isSelectedSaturday && <span style={{ fontSize: '0.85rem', color: '#2563EB', fontWeight: 600 }}>(토요일: 야간 제외)</span>}
               </h3>
               <p style={{ fontSize: '0.825rem', color: '#64748B' }}>
                 버튼을 클릭하면 해당 시간대의 학생 예약 가능 여부가 즉시 토글됩니다.
@@ -539,17 +575,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               >
                 선택일 주간만 열기
               </button>
-              <button
-                onClick={() => handleBulkSet('night_only')}
-                className="btn-secondary"
-                style={{ fontSize: '0.8rem', padding: '0.4rem 0.7rem' }}
-              >
-                선택일 야간만 열기
-              </button>
+              {!isSelectedSaturday && (
+                <button
+                  onClick={() => handleBulkSet('night_only')}
+                  className="btn-secondary"
+                  style={{ fontSize: '0.8rem', padding: '0.4rem 0.7rem' }}
+                >
+                  선택일 야간만 열기
+                </button>
+              )}
               <button
                 onClick={handleToggleClosedDay}
                 className={isClosedDay ? "btn-primary" : "btn-danger"}
-                style={{ fontSize: '0.8rem', padding: '0.4rem 0.7rem' }}
+                style={{ fontSize: '0.8rem', padding: '0.4rem 0.7rem', background: isClosedDay ? '#059669' : undefined }}
               >
                 {isClosedDay ? '선택일 마감 해제' : '선택일 전체 휴무 마감'}
               </button>
@@ -557,13 +595,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           {isClosedDay ? (
-            <div style={{ background: '#FEF2F2', padding: '2rem', borderRadius: '14px', textAlign: 'center', color: '#991B1B', fontWeight: 700 }}>
-              🚫 현재 {selectedDate} 날짜 전체가 예약 마감(휴무) 상태로 설정되어 있습니다.
+            <div style={{
+              background: '#FEF2F2',
+              border: '1.5px solid #FCA5A5',
+              padding: '2.5rem 2rem',
+              borderRadius: '16px',
+              textAlign: 'center',
+              color: '#991B1B'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: '#FEE2E2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem auto'
+              }}>
+                <Ban size={24} color="#DC2626" />
+              </div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '0.4rem' }}>
+                🚫 [{selectedDate}] 날짜는 현재 전체 예약 마감(휴무) 상태입니다.
+              </div>
+              <p style={{ fontSize: '0.875rem', color: '#7F1D1D', marginBottom: '1.5rem' }}>
+                {isSelectedSunday 
+                  ? '일요일은 기본적으로 휴무로 설정되어 있습니다. 이 날짜에 상담을 오픈하시려면 아래 버튼을 눌러주세요.'
+                  : '일괄 마감되었거나 개별 휴무로 지정되어 있습니다. 이 날짜의 마감을 해제하고 상담 슬롯을 오픈하시려면 아래 버튼을 눌러주세요.'}
+              </p>
+              <button
+                onClick={handleToggleClosedDay}
+                className="btn-primary"
+                style={{ padding: '0.75rem 1.75rem', fontSize: '0.95rem', background: '#059669', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <Sparkles size={18} />
+                ✨ [{selectedDate}] 마감 해제하고 예약 열기
+              </button>
             </div>
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
               gap: '0.75rem'
             }}>
               {daySlots.map((slot) => {
@@ -588,10 +660,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       fontWeight: 700
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.95rem' }}>
                       <Clock size={14} />
                       <span>{slot.time}</span>
-                      {slot.isNight && <span style={{ fontSize: '0.65rem', color: '#8B5CF6' }}>야간</span>}
                     </div>
                     <span style={{ fontSize: '0.72rem' }}>
                       {isBooked ? '🔒 예약완료' : isBlocked ? '❌ 차단됨' : '✅ 오픈 상태'}
@@ -651,7 +722,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E2E8F0', textAlign: 'left' }}>
                   <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>일시</th>
-                  <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>학생 이름</th>
+                  <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>신청자 이름</th>
                   <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>학년/반/번호</th>
                   <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>상담 주제</th>
                   <th style={{ padding: '0.75rem 1rem', color: '#475569' }}>상담 내용</th>

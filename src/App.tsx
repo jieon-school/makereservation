@@ -32,8 +32,7 @@ export function App() {
 
   // Fetch slots for selected date
   const slots = StorageService.getSlotsForDate(selectedDate);
-  const daySchedules = StorageService.getDaySchedules();
-  const isClosedDay = !!daySchedules[selectedDate]?.isClosedDay;
+  const isClosedDay = StorageService.isClosedDay(selectedDate);
   const isGuardianEnabled = StorageService.isGuardianBookingEnabled();
 
   const showToast = (type: 'success' | 'error' | 'info', message: string) => {

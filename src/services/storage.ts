@@ -27,6 +27,28 @@ export function isNightSlot(time: string): boolean {
   return time.includes('야자') || time.startsWith('18:') || time.startsWith('19:') || time.startsWith('20:');
 }
 
+export function isSunday(dateStr: string): boolean {
+  if (!dateStr) return false;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getDay() === 0;
+}
+
+export function isSaturday(dateStr: string): boolean {
+  if (!dateStr) return false;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getDay() === 6;
+}
+
+// 날짜별 기본 슬롯 목록 (토요일은 야간 상담 슬롯 아예 제외)
+export function getDefaultSlotsForDate(dateStr: string): string[] {
+  if (isSaturday(dateStr)) {
+    return DEFAULT_TIME_SLOTS.filter(time => !isNightSlot(time));
+  }
+  return DEFAULT_TIME_SLOTS;
+}
+
 // 오늘 날짜 YYYY-MM-DD 형식 반환
 export function getTodayString(): string {
   const today = new Date();
@@ -133,17 +155,33 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.DAY_SCHEDULES, JSON.stringify(schedules));
   },
 
+  // 특정 날짜의 휴무(마감) 여부 (일요일은 기본 휴무)
+  isClosedDay(dateStr: string): boolean {
+    const daySchedules = this.getDaySchedules();
+    if (daySchedules[dateStr]?.isClosedDay !== undefined) {
+      return !!daySchedules[dateStr].isClosedDay;
+    }
+    // 관리자가 별도 설정하지 않은 경우: 일요일은 기본 휴무
+    return isSunday(dateStr);
+  },
+
   getSlotsForDate(dateStr: string): TimeSlotConfig[] {
     const daySchedules = this.getDaySchedules();
     const schedule = daySchedules[dateStr];
+    const isSat = isSaturday(dateStr);
 
-    // 기존 설정이 있는 경우
+    // 기존 커스텀 설정이 있는 경우
     if (schedule && schedule.customSlots && schedule.customSlots.length > 0) {
+      // 토요일의 경우 야간 슬롯은 완전 제외
+      if (isSat) {
+        return schedule.customSlots.filter(s => !isNightSlot(s.time));
+      }
       return schedule.customSlots;
     }
 
-    // 기본 시간 슬롯 설정 생성
-    return DEFAULT_TIME_SLOTS.map(time => ({
+    // 기본 시간 슬롯 설정 생성 (토요일은 야간 제외)
+    const defaultSlots = getDefaultSlotsForDate(dateStr);
+    return defaultSlots.map(time => ({
       time,
       status: 'available',
       isNight: isNightSlot(time)
@@ -176,10 +214,24 @@ export const StorageService = {
 
   toggleClosedDay(dateStr: string, isClosed: boolean): void {
     const daySchedules = this.getDaySchedules();
+    let currentSlots = this.getSlotsForDate(dateStr);
+
+    // 마감 해제(isClosed === false)를 하는 경우, 모든 슬롯이 blocked 상태라면 기본적으로 available로 열어줌
+    if (!isClosed) {
+      const allBlocked = currentSlots.every(s => s.status === 'blocked');
+      if (allBlocked) {
+        currentSlots = currentSlots.map(s => ({
+          ...s,
+          status: s.status === 'booked' ? 'booked' : 'available'
+        }));
+      }
+    }
+
     daySchedules[dateStr] = {
       ...daySchedules[dateStr],
       date: dateStr,
-      isClosedDay: isClosed
+      isClosedDay: isClosed,
+      customSlots: currentSlots
     };
     this.saveDaySchedules(daySchedules);
   },
